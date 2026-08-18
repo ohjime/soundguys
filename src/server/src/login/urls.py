@@ -1,7 +1,7 @@
 from django.urls import path
 
 from login.views import (
-    login_card,
+    login_modal,
     check_email,
     verify_code,
     cancel_code,
@@ -13,7 +13,7 @@ from login.views import (
 app_name = "login"
 
 urlpatterns = [
-    path("", login_card, name="login_card"),
+    path("", login_modal, name="login_modal"),
     path("check-email/", check_email, name="check_email"),
     path("verify-code/", verify_code, name="verify_code"),
     path("cancel-code/", cancel_code, name="cancel_code"),

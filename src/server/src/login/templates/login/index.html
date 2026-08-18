@@ -1,10 +1,9 @@
-{% partialdef card %}
-    <c-core-card id="login-card" bgColor="bg-secondary">
-        <div class="flex flex-col flex-1 items-center justify-center gap-6 px-6 py-8">
-            <h2 class="text-primary-content font-serif text-xl font-semibold tracking-wide">Login</h2>
-            {# allow_anonymous toggles the "Continue Anonymously" affordance for callers like vote #}
-            {# Email form — pressed stays true after send; cancel-login resets it #}
-            {# djlint:off #}
+{% partialdef modal %}
+    <c-core-modal title="Login">
+        <div class="flex flex-col items-center justify-center gap-6 pt-4">
+            <!-- allow_anonymous toggles the "Continue Anonymously" affordance for callers like vote. -->
+            <!-- Email form — pressed stays true after send; cancel-login resets it. -->
+            <!-- djlint:off -->
             <form class="w-full"
                   x-data="{ pressed: false, email: '', submittedEmail: '' }"
                   @login-cancel.window="pressed = false"
@@ -12,7 +11,7 @@
                   hx-post="{% url 'login:check_email' %}"
                   hx-target="#login-code-section"
                   hx-swap="innerHTML swap:250ms">
-            {# djlint:on #}
+            <!-- djlint:on -->
             {% csrf_token %}
             <input type="hidden" name="email" :value="submittedEmail || email" />
             <div class="join w-full">
@@ -43,11 +42,11 @@
                 </button>
             </div>
         </form>
-        {# Code section — empty until email is sent #}
+        <!-- Code section — empty until email is sent. -->
         <div id="login-code-section" class="w-full"></div>
         {% if allow_anonymous %}<c-login-anon-form />{% endif %}
-    </div>
-</c-core-card>
+        </div>
+    </c-core-modal>
 {% endpartialdef %}
 
 {% partialdef code_form %}
@@ -56,14 +55,14 @@
             Check your email
         </div>
         {% if error %}<div class="alert alert-error text-sm py-2">{{ error }}</div>{% endif %}
-        {# djlint:off #}
+        <!-- djlint:off -->
     <form class="w-full"
           x-data="{ pressed: false }"
           @submit="pressed = true"
           hx-post="{% url 'login:verify_code' %}"
           hx-target="#login-code-section"
           hx-swap="innerHTML swap:250ms">
-        {# djlint:on #}
+        <!-- djlint:on -->
         {% csrf_token %}
         <div class="join w-full">
             <input class="input join-item w-full"
@@ -103,5 +102,5 @@
 {% endpartialdef %}
 
 {% partialdef post_login %}
-    <c-core-user-details oob="true" />
+    <c-core-header oob="true" />
 {% endpartialdef %}

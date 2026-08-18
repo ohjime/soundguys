@@ -1,12 +1,69 @@
 {% load static %}
-<div class="select-none relative flex justify-center items-center">
-    <div class="relative motion-preset-oscillate-sm motion-duration-1500">
+<c-vars oob="" />
+<div id="core-header"
+     {% if oob %}hx-swap-oob="outerHTML"{% endif %}
+     class="select-none relative flex justify-center items-center">
+    <div x-data="{ authenticated: {{ user.is_authenticated|yesno:'true,false' }} }"
+         class="group/header relative rounded-full motion-preset-oscillate-sm motion-duration-1500">
+        <!-- One full-cover hit target per auth state. Signed out it opens the login modal; signed in it opens the profile modal and also covers the avatar, which sits inside this same box. Everything below is decoration and is pointer-events-none. -->
+        {% if user.is_authenticated %}
+            <button type="button"
+                    data-page-loader
+                    aria-label="Edit profile for {{ user.username }}"
+                    title="Edit profile"
+                    hx-get="{% url 'profile:profile_modal' %}"
+                    hx-swap="none"
+                    class="absolute inset-0 z-20 cursor-pointer rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+            </button>
+        {% else %}
+            <button type="button"
+                    data-page-loader
+                    aria-label="Join cosound"
+                    title="Join"
+                    hx-get="{% url 'login:login_modal' %}"
+                    hx-vals='js:{ from: document.getElementById("studio-stage") ? "studio" : "" }'
+                    hx-swap="none"
+                    class="absolute inset-0 z-20 cursor-pointer rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+            </button>
+        {% endif %}
         <div class="absolute inset-5 rounded-full bg-linear-to-r from-primary via-accent to-info opacity-50 blur-lg animate-[spin_5s_linear_infinite]">
         </div>
         <div class="relative flex h-24 w-24 items-center justify-center rounded-full bg-transparent">
+            {% if user.is_authenticated %}
+                <span x-show="authenticated"
+                      aria-hidden="true"
+                      style="display: none;
+                             -webkit-mask-image: radial-gradient(circle, transparent 0 34%, black 38%);
+                             mask-image: radial-gradient(circle, transparent 0 34%, black 38%)"
+                      class="pointer-events-none absolute -top-2.5 left-3 z-0 size-18 rounded-full bg-[repeating-conic-gradient(from_0deg,var(--color-warning)_0deg_8deg,transparent_8deg_22.5deg)] opacity-0 transition-opacity duration-200 ease-out group-hover/header:opacity-70 group-focus-within/header:opacity-70 animate-[spin_7s_linear_infinite] motion-reduce:animate-none">
+                </span>
+            {% endif %}
+            <!-- The file is 633x394; the box is fixed by h-24 w-24 either way,
+                 but the intrinsic size lets the browser reserve it before the
+                 PNG decodes, and now that the page is server-rendered this is
+                 the largest byte on the critical path after the stylesheet. -->
             <img src="{% static 'core/img/logo.png' %}"
                  alt="cosound"
-                 class="h-24 w-24 object-contain drop-shadow-sm drop-shadow-secondary">
+                 width="633"
+                 height="394"
+                 fetchpriority="high"
+                 decoding="async"
+                 class="relative z-[1] h-24 w-24 object-contain drop-shadow-sm drop-shadow-secondary">
+            <div x-show="authenticated"
+                 x-transition:enter="motion-scale-in-85 motion-translate-y-in-50 motion-opacity-in-0 motion-blur-in-xs motion-duration-300 motion-ease-out-quart duration-300"
+                 x-transition:leave="motion-scale-out-75 motion-opacity-out-0 motion-blur-out-xs motion-duration-200 motion-ease-in-quad duration-200"
+                 style="display: none"
+                 class="pointer-events-none absolute top-0.5 left-5.0 z-10 motion-reduce:animate-none">
+                <c-core-avatar size="h-10 w-10" image_url="{{ user.avatar_url }}" image_class="scale-110" />
+            </div>
+            <span x-show="!authenticated"
+                  aria-hidden="true"
+                  x-transition:enter="motion-scale-in-85 motion-translate-y-in-50 motion-opacity-in-0 motion-blur-in-xs motion-duration-300 motion-ease-out-quart duration-300"
+                  x-transition:leave="motion-scale-out-75 motion-opacity-out-0 motion-blur-out-xs motion-duration-200 motion-ease-in-quad duration-200"
+                  style="display: none"
+                  class="pointer-events-none absolute top-7 left-2.0 z-10 motion-reduce:animate-none text-xs scale-95 font-bold font-sans pr-0.5">
+                JOIN
+            </span>
         </div>
     </div>
 </div>

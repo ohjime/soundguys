@@ -14,6 +14,9 @@ the url tag reverses against the per-request urlconf, not ROOT_URLCONF.
 and a listener's mix do identically (a list of sound ids and gains), so the
 builder's transport posts to ``mixer:save``, and the title modal it opens posts
 to ``mixer:save_confirm``. Both have to resolve here.
+
+``profile/`` keeps the shared authenticated header's account editor available
+on the studio host as well as the main site.
 """
 
 from django.urls import path, include
@@ -22,4 +25,5 @@ urlpatterns = [
     path("", include("studio.urls")),
     path("login/", include("login.urls")),
     path("mixer/", include("mixer.urls")),
+    path("profile/", include("profile.urls")),
 ]

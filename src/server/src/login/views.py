@@ -5,7 +5,7 @@ from django.http import HttpResponse, Http404
 from django.shortcuts import render
 
 from core.models import Listener, User
-from core.utils import add_card, close_modal, pop_card, show_modal
+from core.utils import close_modal, show_modal
 from login.adapters import UnifiedRequestLoginCodeForm
 from login.utils import (
     clear_login_state,
@@ -17,7 +17,7 @@ from login.utils import (
 from studio.utils import is_studio_url
 
 
-def login_card(request):
+def login_modal(request):
 
     if request.htmx:
         referer = request.headers.get("HX-Current-URL", "")
@@ -30,11 +30,7 @@ def login_card(request):
             request.session["post_login_partial"] = "studio/index.html#post_login"
         else:
             request.session.pop("post_login_partial", None)
-        return add_card(
-            target_deck="deck",
-            template="login/index.html#card",
-            request=request,
-        )
+        return show_modal(request, "login/index.html#modal")
     return Http404("Page not found.")
 
 
@@ -97,9 +93,9 @@ def verify_code(request):
                 post_login_partial = request.session.pop(
                     "post_login_partial", "login/index.html#post_login"
                 )
-                response = pop_card(request, template=post_login_partial)
+                response = close_modal(request, template=post_login_partial)
                 response["HX-Trigger"] = json.dumps(
-                    {"card:remove": True, "auth-success": True}
+                    {"close-modal": True, "auth-success": True}
                 )
                 return response
             except User.DoesNotExist:
@@ -146,9 +142,9 @@ def login_anonymously(request):
     post_login_partial = request.session.pop(
         "post_login_partial", "login/index.html#post_login"
     )
-    response = pop_card(request, template=post_login_partial)
+    response = close_modal(request, template=post_login_partial)
     response["HX-Trigger"] = json.dumps(
-        {"card:remove": True, "auth-success": True}
+        {"close-modal": True, "auth-success": True}
     )
     return response
 

@@ -108,7 +108,7 @@ no longer says "studio".
             </svg>
             <h2 class="font-serif text-xl font-semibold tracking-wide">Artists only</h2>
             <p class="text-sm opacity-70">Sign in to start building a mix.</p>
-            <button type="button" class="btn btn-primary btn-sm mt-2" hx-get="{% url 'login:login_card' %}?from=studio" hx-trigger="click[!document.getElementById('login-card')]" hx-swap="none">
+            <button type="button" class="btn btn-primary btn-sm mt-2" hx-get="{% url 'login:login_modal' %}?from=studio" hx-trigger="click[!document.getElementById('login-card')]" hx-swap="none">
                 Sign in
             </button>
         </div>

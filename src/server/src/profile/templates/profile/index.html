@@ -1,0 +1,13 @@
+{% partialdef modal %}
+    <c-core-modal title="Your profile">
+        <c-profile-editor :form="form"
+                          :has_custom_avatar="has_custom_avatar"
+                          :clear_avatar_requested="clear_avatar_requested"
+                          avatar_url="{{ avatar_url }}"
+                          preview_avatar_url="{{ preview_avatar_url }}"
+                          default_avatar_url="{{ default_avatar_url }}" />
+    </c-core-modal>
+{% endpartialdef %}
+{% partialdef post_update %}
+    <c-core-header oob="true" />
+{% endpartialdef %}

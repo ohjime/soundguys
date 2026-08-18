@@ -1,0 +1,13 @@
+<c-vars image_url="" alt="" size="h-16 w-16" class="" image_class="" />
+<div class="avatar {% if not image_url %}avatar-placeholder{% endif %} {{ class }}">
+    <div class="{{ size }} bg-base-200 ring-gray-400/40 ring-3 rounded-2xl">
+        {% if image_url %}
+            <img src="{{ image_url }}" alt="{{ alt }}" class="{{ image_class }}" />
+        {% else %}
+            <img src="https://api.dicebear.com/10.x/lorelei-neutral/svg?scale=1.04&borderRadius=0&rotate=-9&seed=4jw2exo7"
+                 alt="avatar"
+                 class="{{ image_class }}" />
+            {% if alt %}<span class="sr-only">{{ alt }}</span>{% endif %}
+        {% endif %}
+    </div>
+</div>
