@@ -177,6 +177,7 @@ INSTALLED_APPS = [
     "login",
     "studio",
     "profile",
+    "library",
     "allauth",
     "allauth.account",
 ]

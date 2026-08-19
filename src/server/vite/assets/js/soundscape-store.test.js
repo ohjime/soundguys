@@ -133,6 +133,19 @@ async function startedStore(rawLayers = [seededBlankLayer()], options = {}) {
     return store;
 }
 
+test("destroy clears playback state before a replacement store mounts", async () => {
+    const store = await startedStore();
+    store.started = true;
+    store.paused = true;
+    assert.equal(store.started, true);
+    assert.equal(store.paused, true);
+
+    store.destroy();
+
+    assert.equal(store.started, false);
+    assert.equal(store.paused, false);
+});
+
 test("a blank layer added in the browser cannot collide with the seeded one", async () => {
     const store = await startedStore();
     await store.addLayer(makeDraftLayer({ artistName: "Some Artist" }));

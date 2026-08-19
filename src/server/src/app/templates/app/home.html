@@ -20,33 +20,15 @@
                 <div class="flex flex-col gap-1.5 pb-6 items-center justify-center w-full">
                     <c-app-navigation-tabs />
                 </div>
-                <!-- The tab-controlled body: each c-app-navigation-tabs radio
-                     swaps this region's contents. Opens on the mixer. -->
-                <div id="tab_content" class="flex flex-col items-center gap-10 w-full">{% include "app/home.html#tab_mixer" %}</div>
-            </div>
-        </div>
-        <!-- Below-deck content — each section animates its own height in/out via grid-rows trick -->
-        <div class="w-full flex flex-col items-center">
-            <div x-data
-                 class="grid w-full transition-[grid-template-rows,opacity] duration-500 ease-out"
-                 :class="$store.soundLayers.started ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'">
-                <div class="overflow-hidden flex flex-col items-center pt-6 pb-2"
-                     :class="$store.soundLayers.started && 'motion-opacity-in-0 motion-translate-y-in-100 motion-delay-200 motion-duration-500 motion-blur-in-md'">
-                    <c-core-user-details />
+                <!-- The tab-controlled body owns both content stages so an
+                     outgoing tab leaves as one unit before the next one mounts. -->
+                <div id="tab_content"
+                     data-swap-height
+                     role="region"
+                     aria-label="Selected home section"
+                     class="flex w-full flex-col items-center transition-[opacity,transform] duration-200 ease-out motion-reduce:!transform-none motion-reduce:!transition-none [&.htmx-swapping]:translate-y-4 [&.htmx-swapping]:opacity-0">
+                    {% include "app/home.html#tab_mixer" %}
                 </div>
-            </div>
-            <div x-data
-                 class="grid w-full transition-[grid-template-rows,opacity] duration-500 ease-out"
-                 :class="$store.soundLayers.started ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'">
-                <div class="overflow-hidden flex flex-col items-center gap-3 pt-6"
-                     :class="$store.soundLayers.started && 'motion-opacity-in-0 motion-translate-y-in-100 motion-delay-300 motion-blur-in-md motion-duration-500'">
-                    <c-app-saved-mixes :mixes="user_mixes" />
-                </div>
-            </div>
-            <div id="feed"
-                 x-data
-                 class="text-md font-light flex flex-col items-center gap-2 w-full pt-6 empty:pt-0"
-                 :class="$store.soundLayers.started && 'motion-opacity-in-0 motion-translate-y-in-100 motion-blur-in-md'">
             </div>
         </div>
     </div>
@@ -58,12 +40,32 @@ unmounts it (the htmx cleanup hook in soundscape-store.js stops the audio) and
 choosing MIXER again mounts a fresh random mix.
 -->
 {% partialdef tab_mixer %}
-    <c-mixer-player :sounds="sounds" />
-    <div>
-        <c-core-deck id="deck">
-            {% include "mixer/index.html#mixer" %}
-        </c-core-deck>
-    </div>
+    <c-core-tab-body reveal="started">
+        <c-slot name="primary">
+            <c-mixer-player :sounds="sounds" />
+            <div>
+                <c-core-deck id="deck">
+                    {% include "mixer/index.html#mixer" %}
+                </c-core-deck>
+            </div>
+        </c-slot>
+        <c-slot name="secondary">
+            <div class="flex w-full flex-col items-center">
+                <div class="flex w-full flex-col items-center pt-6 pb-2 motion-reduce:!animate-none motion-reduce:!transform-none"
+                     :class="secondaryRevealed && 'motion-opacity-in-0 motion-translate-y-in-100 motion-delay-200 motion-duration-500 motion-blur-in-md'">
+                    <c-core-user-details />
+                </div>
+                <div class="flex w-full flex-col items-center gap-3 pt-6 motion-reduce:!animate-none motion-reduce:!transform-none"
+                     :class="secondaryRevealed && 'motion-opacity-in-0 motion-translate-y-in-100 motion-delay-300 motion-duration-500 motion-blur-in-md'">
+                    <c-app-saved-mixes :mixes="user_mixes" />
+                </div>
+                <div id="feed"
+                     class="text-md flex w-full flex-col items-center gap-2 pt-6 font-light empty:pt-0 motion-reduce:!animate-none motion-reduce:!transform-none"
+                     :class="secondaryRevealed && 'motion-opacity-in-0 motion-translate-y-in-100 motion-delay-400 motion-duration-500 motion-blur-in-md'">
+                </div>
+            </div>
+        </c-slot>
+    </c-core-tab-body>
 {% endpartialdef %}
 <!--
 The ABOUT tab: cosound's own write-up — what the project is, how the server and
@@ -71,7 +73,14 @@ venue player work, and the open recommendation problem. See
 cotton/app_about_article.html.
 -->
 {% partialdef tab_about %}
-    <c-app-about-article />
+    <c-core-tab-body reveal="timer" delay="1800" buttonText="Read In-Depth Technical Details ↓">
+        <c-slot name="primary">
+            <c-app-about-article section="primary" />
+        </c-slot>
+        <c-slot name="secondary">
+            <c-app-about-article section="secondary" />
+        </c-slot>
+    </c-core-tab-body>
 {% endpartialdef %}
 {% partialdef mix_title_modal %}
     <h3 class="font-bold text-lg">Name your cosound</h3>

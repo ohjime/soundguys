@@ -92,17 +92,16 @@ def home_initial(request):
 
 
 def home_tab_mixer(request):
-    """The MIXER tab's body: a fresh player over a random mix.
-
-    c-app-navigation-tabs swaps this into #tab_content; the STUDIO tab's
-    counterpart is studio:initial.
-    """
+    """The LISTEN tab's two-stage body over a fresh random mix."""
     if not request.htmx:
         return HttpResponse("Request Denied.")
     return render(
         request,
         "app/home.html#tab_mixer",
-        {"sounds": get_random_sounds(user=request.user)},
+        {
+            "sounds": get_random_sounds(user=request.user),
+            "user_mixes": serialize_user_mixes(request.user),
+        },
     )
 
 
@@ -111,5 +110,3 @@ def home_tab_about(request):
     if not request.htmx:
         return HttpResponse("Request Denied.")
     return render(request, "app/home.html#tab_about")
-
-

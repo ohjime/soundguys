@@ -573,6 +573,11 @@ export function createSoundLayersStore(rawLayers, {
         },
 
         destroy() {
+            // A replacement tab can initialise before this store object is
+            // overwritten. Clear playback state first so reactive consumers
+            // never mistake the outgoing mix for a newly started one.
+            this.started = false;
+            this.paused = false;
             this._teardownEngine();
             this.layers.forEach(revokeLocalUrls);
         },

@@ -1,0 +1,98 @@
+<c-vars reveal="manual" delay="1200" buttonText="" />
+<!--
+Two-stage tab content. The primary slot enters as soon as htmx mounts the tab.
+The secondary slot expands later, either from mixer state, a timer, the reveal
+button, or a `tab-secondary-reveal` event dispatched on window.
+-->
+<!-- djlint:off -->
+<div x-data="{
+         primaryMounted: false,
+         secondaryRevealed: {% if reveal == 'always' %}true{% else %}false{% endif %},
+         secondarySettled: {% if reveal == 'always' %}true{% else %}false{% endif %},
+         reduceMotion: Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches),
+         revealMode: '{{ reveal|escapejs }}',
+         delayMs: Number('{{ delay|escapejs }}') || 0,
+         timerId: null,
+         settleTimerId: null,
+         cancelRevealTimer() {
+             if (this.timerId !== null) {
+                 clearTimeout(this.timerId);
+                 this.timerId = null;
+             }
+         },
+         revealSecondary() {
+             this.cancelRevealTimer();
+             if (this.secondaryRevealed) return;
+             this.secondaryRevealed = true;
+             if (this.reduceMotion) {
+                 this.secondarySettled = true;
+                 return;
+             }
+             this.settleTimerId = setTimeout(() => {
+                 this.secondarySettled = true;
+                 this.settleTimerId = null;
+             }, 500);
+         },
+         destroy() {
+             this.cancelRevealTimer();
+             if (this.settleTimerId !== null) clearTimeout(this.settleTimerId);
+         },
+     }"
+     x-id="['tab-secondary']"
+     x-init="
+         requestAnimationFrame(() => requestAnimationFrame(() => primaryMounted = true));
+         if (revealMode === 'timer') {
+             timerId = setTimeout(() => revealSecondary(), delayMs);
+         }
+     "
+     x-effect="if (revealMode === 'started' && $store.soundLayers?.started) revealSecondary()"
+     @tab-secondary-reveal.window="revealSecondary()"
+     data-core-tab-body
+     data-reveal-mode="{{ reveal }}"
+     data-reveal-delay="{{ delay }}"
+     class="flex w-full flex-col items-center gap-6">
+    <!-- djlint:on -->
+    <div data-tab-primary
+         style="opacity: 0; transform: translateY(40px)"
+         :style="`transition: ${reduceMotion ? 'none' : 'transform 200ms ease-out, opacity 200ms ease-out'}; transform: translateY(${primaryMounted || reduceMotion ? 0 : 40}px); opacity: ${primaryMounted || reduceMotion ? 1 : 0};`"
+         class="flex w-full flex-col items-center gap-10 motion-reduce:transform-none motion-reduce:transition-none">
+        {{ primary }}
+    </div>
+    {% if buttonText and reveal != "always" %}
+        <div x-show="!secondaryRevealed"
+             x-transition:leave="transition ease-in duration-150 motion-reduce:!transition-none"
+             x-transition:leave-start="opacity-100 translate-y-0"
+             x-transition:leave-end="opacity-0 -translate-y-2"
+             class="flex w-full justify-center">
+            <button type="button"
+                    class="btn btn-ghost rounded-full px-6 font-sans text-sm"
+                    aria-expanded="false"
+                    :aria-expanded="secondaryRevealed.toString()"
+                    :aria-controls="$id('tab-secondary')"
+                    @mouseenter="cancelRevealTimer()"
+                    @focusin="cancelRevealTimer()"
+                    @click="revealSecondary(); $nextTick(() => $refs.secondary.focus({ preventScroll: true }))">{{ buttonText }}</button>
+        </div>
+    {% endif %}
+    <div data-tab-secondary
+         x-ref="secondary"
+         :id="$id('tab-secondary')"
+         role="region"
+         aria-label="Additional tab content"
+         tabindex="-1"
+         {% if reveal != "always" %}inert aria-hidden="true"{% else %}aria-hidden="false"{% endif %}
+         :inert="!secondaryRevealed"
+         :aria-hidden="(!secondaryRevealed).toString()"
+         style="grid-template-rows: {% if reveal == 'always' %}1fr{% else %}0fr{% endif %}; opacity: {% if reveal == 'always' %}1{% else %}0{% endif %}"
+         :style="`grid-template-rows: ${secondaryRevealed ? '1fr' : '0fr'}; opacity: ${secondaryRevealed ? 1 : 0};`"
+         class="grid w-full transition-[grid-template-rows,opacity] duration-500 ease-out motion-reduce:!transition-none">
+        <div style="overflow: {% if reveal == 'always' %}visible{% else %}hidden{% endif %}"
+             :style="`overflow: ${secondarySettled ? 'visible' : 'hidden'}`"
+             class="min-h-0">
+            <div :class="secondaryRevealed && 'motion-opacity-in-0 motion-translate-y-in-100 motion-delay-200 motion-duration-500 motion-blur-in-md'"
+                 class="flex w-full flex-col items-center motion-reduce:!animate-none motion-reduce:!transform-none">
+                {{ secondary }}
+            </div>
+        </div>
+    </div>
+</div>

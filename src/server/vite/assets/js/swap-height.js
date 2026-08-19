@@ -29,8 +29,16 @@ const ATTRIBUTE = "data-swap-height";
 
 // Height each element had when its swap started, and the animation currently
 // playing on it — a second swap mid-animation has to interrupt the first.
-const outgoingHeight = new WeakMap();
+const outgoingHeightByRequest = new WeakMap();
+const fallbackOutgoingHeight = new WeakMap();
 const playing = new WeakMap();
+const originalOverflow = new WeakMap();
+
+function restoreOverflow(el) {
+    if (!originalOverflow.has(el)) return;
+    el.style.overflow = originalOverflow.get(el);
+    originalOverflow.delete(el);
+}
 
 /** How long a swap that changes an element's height by `delta` px should take. */
 export function swapDuration(delta) {
@@ -56,6 +64,13 @@ function height(el) {
     return el.getBoundingClientRect().height;
 }
 
+function requestKey(event) {
+    const xhr = event.detail?.xhr;
+    return xhr && (typeof xhr === "object" || typeof xhr === "function")
+        ? xhr
+        : null;
+}
+
 export function installSwapHeightTransitions({
     root = document,
     scroller = typeof window === "undefined" ? null : window,
@@ -65,14 +80,25 @@ export function installSwapHeightTransitions({
         if (!el) return;
         // Read the height that is on screen right now — mid-animation that is
         // the animated height, not the old content's natural one.
-        outgoingHeight.set(el, height(el));
+        const key = requestKey(event);
+        if (key) outgoingHeightByRequest.set(key, height(el));
+        else fallbackOutgoingHeight.set(el, height(el));
     });
 
     root.addEventListener("htmx:afterSwap", (event) => {
         const el = resolveTarget(event);
-        if (!el || !outgoingHeight.has(el)) return;
-        const from = outgoingHeight.get(el);
-        outgoingHeight.delete(el);
+        if (!el) return;
+        const key = requestKey(event);
+        let from;
+        if (key && outgoingHeightByRequest.has(key)) {
+            from = outgoingHeightByRequest.get(key);
+            outgoingHeightByRequest.delete(key);
+        } else if (fallbackOutgoingHeight.has(el)) {
+            from = fallbackOutgoingHeight.get(el);
+            fallbackOutgoingHeight.delete(el);
+        } else {
+            return;
+        }
 
         // A tab swapped while scrolled into the outgoing body leaves the
         // viewport parked in whatever the new body has (or hasn't) got there.
@@ -81,26 +107,39 @@ export function installSwapHeightTransitions({
 
         const running = playing.get(el);
         if (running) {
+            // beforeSwap precedes htmx's swap delay, so its snapshot can be
+            // stale if the previous height animation is still moving. Resume
+            // from the height actually on screen at the interruption point.
+            from = height(el);
             running.cancel();
-            playing.delete(el);
+            if (playing.get(el) === running) playing.delete(el);
         }
 
-        if (typeof el.animate !== "function") return;
+        if (typeof el.animate !== "function") {
+            restoreOverflow(el);
+            return;
+        }
         if (
             root.defaultView &&
             root.defaultView.matchMedia &&
             root.defaultView.matchMedia("(prefers-reduced-motion: reduce)")
                 .matches
         ) {
+            restoreOverflow(el);
             return;
         }
 
         // With the animation cancelled and no inline height left, this is the
         // height the new content settles at.
         const to = height(el);
-        if (Math.abs(to - from) < MIN_DELTA_PX) return;
+        if (Math.abs(to - from) < MIN_DELTA_PX) {
+            restoreOverflow(el);
+            return;
+        }
 
-        const previousOverflow = el.style.overflow;
+        if (!originalOverflow.has(el)) {
+            originalOverflow.set(el, el.style.overflow);
+        }
         el.style.overflow = "hidden";
 
         // No `fill`: when the animation ends the element is back to sizing
@@ -113,8 +152,11 @@ export function installSwapHeightTransitions({
         playing.set(el, animation);
 
         const release = () => {
-            if (playing.get(el) === animation) playing.delete(el);
-            el.style.overflow = previousOverflow;
+            // A cancelled animation may settle after its replacement starts.
+            // Only the current animation is allowed to restore shared styles.
+            if (playing.get(el) !== animation) return;
+            playing.delete(el);
+            restoreOverflow(el);
         };
         if (animation.finished) {
             animation.finished.then(release, release);
