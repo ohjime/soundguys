@@ -1,5 +1,5 @@
+<!-- djlint:off -->
 <div class="relative w-full h-full"
-    {# djlint:off #}
      x-data="{
         title: '',
         artist: '',
@@ -61,9 +61,8 @@
             el.scrollTo({ left: items[store.currentIndex].offsetLeft, behavior: 'instant' });
         }
         updateActive();
-     })"
-    {# djlint:on #}
-    >
+     })">
+    <!-- djlint:on -->
     <div x-ref="carousel"
          @scroll.debounce.5ms="updateActive()"
          class="carousel w-full h-full">

@@ -67,7 +67,7 @@
         <div class="relative ring-5 ring-amber-600/60 mx-4 mt-4 mb-4 rounded-xs rounded-b-2xl bg-white/65 text-black">
             <div class="h-30 overflow-y-auto py-2 px-4">
                 <c-vote-card-body>
-                    {# djlint:off #}
+                    <!-- djlint:off -->
                         <template x-if="$store.voteLayers.currentIndex === 0">
                             <div class="italic font-serif font-extralight text-[8pt] font-stretch-95%">
                                 <p class="py-1 not-italic font-bold font-serif text-xs font-stretch-95%"
@@ -82,7 +82,7 @@
                                 <span x-text="$store.voteLayers.currentLayer.flavor"></span>
                             </div>
                         </template>
-                    {# djlint:on #}
+                    <!-- djlint:on -->
                 </c-vote-card-body>
             </div>
             <div class="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-neutral-content/80 to-transparent rounded-b-2xl">
