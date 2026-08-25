@@ -9,7 +9,7 @@ from app.views import (
     example_card_swap_multiple,
     home_page,
     home_initial,
-    home_tab_mixer,
+    home_tab_library,
     home_tab_about,
     artist_details,
 )
@@ -64,9 +64,9 @@ htmx_urlpatterns = [
         name="home_initial",
     ),
     path(
-        "htmx/home/tab/mixer",
-        home_tab_mixer,
-        name="home_tab_mixer",
+        "htmx/home/tab/library",
+        home_tab_library,
+        name="home_tab_library",
     ),
     path(
         "htmx/home/tab/about",

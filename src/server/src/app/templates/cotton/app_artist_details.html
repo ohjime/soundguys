@@ -1,11 +1,11 @@
 <c-vars name="Unknown Artist" bio="" url="" avatar_url="" cover_url="" cover_style="" uploaded_count="0" favourited_count="0" />
 
-{# Close button (daisyUI dialog pattern) #}
+<!-- Close button (daisyUI dialog pattern) -->
 <form method="dialog">
     <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2 z-30">✕</button>
 </form>
 
-{# Cover photo + avatar header. Bleed out to the modal-box edges. #}
+<!-- Cover photo + avatar header. Bleed out to the modal-box edges. -->
 <div class="-mx-6 -mt-6">
     <div class="relative h-32 w-full rounded-t-[inherit] overflow-hidden bg-base-200"
          {% if cover_url %}
@@ -30,10 +30,10 @@
     </div>
 </div>
 
-{# Bio #}
+<!-- Bio -->
 <p class="mt-4 text-sm italic opacity-80">{{ bio }}</p>
 
-{# Stats #}
+<!-- Stats -->
 <div class="stats stats-horizontal mt-4 w-full bg-base-200">
     <div class="stat place-items-center">
         <div class="stat-title">Sounds</div>

@@ -20,52 +20,37 @@
                 <div class="flex flex-col gap-1.5 pb-6 items-center justify-center w-full">
                     <c-app-navigation-tabs />
                 </div>
-                <!-- The tab-controlled body owns both content stages so an
-                     outgoing tab leaves as one unit before the next one mounts. -->
                 <div id="tab_content"
-                     data-swap-height
                      role="region"
                      aria-label="Selected home section"
-                     class="flex w-full flex-col items-center transition-[opacity,transform] duration-200 ease-out motion-reduce:!transform-none motion-reduce:!transition-none [&.htmx-swapping]:translate-y-4 [&.htmx-swapping]:opacity-0">
-                    {% include "app/home.html#tab_mixer" %}
-                </div>
+                     class="flex w-full flex-col items-center">{% include "app/home.html#tab_explore" %}</div>
             </div>
         </div>
     </div>
 {% endpartialdef %}
+<!-- The EXPLORE tab uses the same fragment as the standalone Explore page. -->
+{% partialdef tab_explore %}
+    {% include "explore/index.html#index" %}
+{% endpartialdef %}
 <!--
-The MIXER tab. The player lives inside the swapped region on purpose: it is
+The LIBRARY tab. The player lives inside the swapped region on purpose: it is
 what mounts the soundLayers store over this tab's mix, so choosing another tab
 unmounts it (the htmx cleanup hook in soundscape-store.js stops the audio) and
-choosing MIXER again mounts a fresh random mix.
+choosing LIBRARY again mounts a fresh empty layer.
 -->
-{% partialdef tab_mixer %}
-    <c-core-tab-body reveal="started">
-        <c-slot name="primary">
-            <c-mixer-player :sounds="sounds" />
-            <div>
-                <c-core-deck id="deck">
-                    {% include "mixer/index.html#mixer" %}
-                </c-core-deck>
-            </div>
-        </c-slot>
-        <c-slot name="secondary">
-            <div class="flex w-full flex-col items-center">
-                <div class="flex w-full flex-col items-center pt-6 pb-2 motion-reduce:!animate-none motion-reduce:!transform-none"
-                     :class="secondaryRevealed && 'motion-opacity-in-0 motion-translate-y-in-100 motion-delay-200 motion-duration-500 motion-blur-in-md'">
-                    <c-core-user-details />
-                </div>
-                <div class="flex w-full flex-col items-center gap-3 pt-6 motion-reduce:!animate-none motion-reduce:!transform-none"
-                     :class="secondaryRevealed && 'motion-opacity-in-0 motion-translate-y-in-100 motion-delay-300 motion-duration-500 motion-blur-in-md'">
-                    <c-app-saved-mixes :mixes="user_mixes" />
-                </div>
-                <div id="feed"
-                     class="text-md flex w-full flex-col items-center gap-2 pt-6 font-light empty:pt-0 motion-reduce:!animate-none motion-reduce:!transform-none"
-                     :class="secondaryRevealed && 'motion-opacity-in-0 motion-translate-y-in-100 motion-delay-400 motion-duration-500 motion-blur-in-md'">
-                </div>
-            </div>
-        </c-slot>
-    </c-core-tab-body>
+{% partialdef tab_library %}
+    <div class="flex w-full flex-col items-center gap-10 pt-4">
+        <c-library-stats like_count="{{ liked_sound_count }}"
+                         like_limit="10"
+                         saved_count="{{ saved_mix_count }}"
+                         saved_limit="5" />
+        <c-core-sound-player :sounds="sounds" />
+        <div>
+            <c-core-deck id="deck">
+                {% include "library/index.html#library" %}
+            </c-core-deck>
+        </div>
+    </div>
 {% endpartialdef %}
 <!--
 The ABOUT tab: cosound's own write-up — what the project is, how the server and
@@ -73,18 +58,11 @@ venue player work, and the open recommendation problem. See
 cotton/app_about_article.html.
 -->
 {% partialdef tab_about %}
-    <c-core-tab-body reveal="timer" delay="1800" buttonText="Read In-Depth Technical Details ↓">
-        <c-slot name="primary">
-            <c-app-about-article section="primary" />
-        </c-slot>
-        <c-slot name="secondary">
-            <c-app-about-article section="secondary" />
-        </c-slot>
-    </c-core-tab-body>
+    <c-app-about-article />
 {% endpartialdef %}
 {% partialdef mix_title_modal %}
     <h3 class="font-bold text-lg">Name your cosound</h3>
-    <form hx-post="{% url 'mixer:save_confirm' %}"
+    <form hx-post="{% url 'library:save_confirm' %}"
           hx-target="#core_modal_content"
           hx-swap="innerHTML"
           class="flex flex-col gap-4 py-4">

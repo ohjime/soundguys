@@ -1,10 +1,12 @@
 from django.http import HttpResponse
 from django.shortcuts import render
 
-from core.models import Sound
+from core.models import Listener, Sound
 from core.utils import show_modal
-from mixer.utils import get_random_sounds
-from app.utils import serialize_user_mixes, build_artist_context
+from explore.renderer import get_explore_context
+from library.models import SoundMix
+from library.utils import get_empty_layer
+from app.utils import build_artist_context
 
 
 def example_card_page(request):
@@ -84,23 +86,30 @@ def home_initial(request):
     return render(
         request,
         "app/home.html#initial",
-        {
-            "sounds": get_random_sounds(user=request.user),
-            "user_mixes": serialize_user_mixes(request.user),
-        },
+        get_explore_context(request.user),
     )
 
 
-def home_tab_mixer(request):
-    """The LISTEN tab's two-stage body over a fresh random mix."""
+def home_tab_library(request):
+    """Render the LIBRARY tab over a fresh empty layer."""
     if not request.htmx:
         return HttpResponse("Request Denied.")
+
+    liked_sound_count = 0
+    saved_mix_count = 0
+    if request.user.is_authenticated:
+        listener = Listener.objects.filter(user=request.user).first()
+        if listener is not None:
+            liked_sound_count = listener.collection.count()
+        saved_mix_count = SoundMix.objects.filter(creator=request.user).count()
+
     return render(
         request,
-        "app/home.html#tab_mixer",
+        "app/home.html#tab_library",
         {
-            "sounds": get_random_sounds(user=request.user),
-            "user_mixes": serialize_user_mixes(request.user),
+            "sounds": [get_empty_layer()],
+            "liked_sound_count": liked_sound_count,
+            "saved_mix_count": saved_mix_count,
         },
     )
 

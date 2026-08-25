@@ -84,7 +84,6 @@ def build_artist_context(user, artist, fallback_name=""):
         "favourited_count": favourited_count,
     }
 
-
 def serialize_mix(sm):
     layers = []
     for sl in sm.cosound.soundlayer_set.all():
@@ -108,17 +107,3 @@ def serialize_mix(sm):
         "created_at": sm.created_at.isoformat(),
         "layers": layers,
     }
-
-
-def serialize_user_mixes(user):
-    from mixer.models import SoundMix
-
-    if not user or not user.is_authenticated:
-        return []
-    mixes = (
-        SoundMix.objects.filter(creator=user)
-        .select_related("cosound")
-        .prefetch_related("cosound__soundlayer_set__sound__tags")
-        .order_by("-created_at")
-    )
-    return [serialize_mix(sm) for sm in mixes]

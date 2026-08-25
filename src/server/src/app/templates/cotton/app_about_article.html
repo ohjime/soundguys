@@ -1,15 +1,11 @@
-<c-vars section="primary" />
 <!--
-The ABOUT tab's article is rendered in two passes by c-core-tab-body. Primary
-contains the hero and project introduction; secondary contains the technical
-architecture, recommendation analysis, paper notes, and reading list.
+The ABOUT tab renders as one continuous article.
 
 Everything below is written against the code in `src/server` and `src/player`.
 Where the running code and the intention disagree, the code is what is
 described and the gap is called out.
 -->
 <div class="flex w-full flex-col items-center gap-10">
-    {% if section == "primary" %}
         <h1 class="font-sans text-center text-[32px] sm:text-[52px] font-bold leading-[100%]">Sound, chosen by the room</h1>
         <p class="font-sans text-center text-[15px] sm:text-[17px] max-w-140 opacity-70 leading-[150%]">
             How cosound collects preference without a survey, how the server and the
@@ -28,13 +24,11 @@ before this page goes in front of anyone.
         <div class="max-w-100 w-full">
             <c-youtube-video id="8ClVZlJNMJM" />
         </div>
-    {% endif %}
     <article class="shadow-sm w-full max-w-200 bg-base-200 text-base-content rounded-3xl overflow-hidden text-left">
         <div class="px-6 sm:px-12 pt-16 pb-20">
             <!-- Reading column: body-2 serif post-text, headline-4 post-headings. -->
             <div class="max-w-160 mx-auto font-serif text-[17px] leading-[155%] [&_p]:mb-[1.5em] [&_a]:underline [&_a]:underline-offset-2 [&_a]:decoration-[#b0aea5] hover:[&_a]:decoration-[#141413] [&_h2]:font-sans [&_h2]:text-[23px] sm:[&_h2]:text-[32px] [&_h2]:font-semibold [&_h2]:leading-[120%] [&_h2]:mt-16 [&_h2]:mb-8 [&_h3]:font-sans [&_h3]:text-[19px] [&_h3]:font-semibold [&_h3]:mt-10 [&_h3]:mb-4 [&_ul]:mb-[1.5em] [&_ul]:pl-6 [&_ul]:list-disc [&_ol]:mb-[1.5em] [&_ol]:pl-6 [&_ol]:list-decimal [&_li]:mb-3 [&_code]:font-sans [&_code]:text-[14px] [&_code]:bg-base-300 [&_code]:rounded [&_code]:px-1.5 [&_code]:py-0.5 [&_table]:w-full [&_table]:text-[15px] [&_table]:font-sans [&_table]:border-collapse [&_th]:text-left [&_th]:font-semibold [&_th]:py-2 [&_th]:pr-4 [&_th]:border-b [&_th]:border-base-content/20 [&_td]:align-top [&_td]:py-2 [&_td]:pr-4 [&_td]:border-b [&_td]:border-base-content/10">
                 <!-- djlint:off -->
-                {% if section == "primary" %}
                 <!-- Epigraph. Schafer is the source of the keynote/signal/soundmark and hi-fi/lo-fi vocabulary used further down, so he opens the page. -->
                 <figure class="border-l-2 border-base-content/25 pl-6 sm:pl-8">
                     <blockquote class="text-[21px] sm:text-[26px] leading-[135%] italic">
@@ -91,16 +85,16 @@ before this page goes in front of anyone.
                 </p>
                 <p>
                     The alternative became the thing you are using right now. Give
-                    the listener a personal web mixer they actually want to use,
+                    the listener a personal web library they actually want to use,
                     and read the preference signal out of how they use it. They get
                     a toy; the project gets a far richer record than any survey
                     would have produced. Nobody is being measured against their
                     will, because the measurement is the same act as the enjoyment.
                 </p>
                 <p>
-                    Which raised the next problem: if the mixer is good enough to
+                    Which raised the next problem: if the library is good enough to
                     enjoy at home, why come back to the room and vote? The answer
-                    is the collection. The mixer is not stocked with the whole
+                    is the collection. The library is not stocked with the whole
                     library — you can only build from sounds you have collected,
                     and the way to collect a sound is to be in a room where it is
                     playing and upvote it. Public listening becomes the way you
@@ -117,8 +111,6 @@ before this page goes in front of anyone.
                     irritates one table and a café that plays rap irritates
                     another, while rain on a window offends nobody.
                 </p>
-                {% endif %}
-                {% if section == "secondary" %}
                 <h2>Two sensors, two different signals</h2>
                 <p>
                     The system has exactly two ways of learning what a listener
@@ -132,7 +124,7 @@ before this page goes in front of anyone.
                             <tr>
                                 <th></th>
                                 <th>The public vote</th>
-                                <th>The personal mixer</th>
+                                <th>The personal library</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -177,7 +169,7 @@ before this page goes in front of anyone.
                 <p>
                     The asymmetry matters for modelling. A saved mix is a strong
                     statement about taste and a weak statement about fit — it was
-                    made in an unknown acoustic context, and the mixer is a
+                    made in an unknown acoustic context, and the library is a
                     playground, so a saved mix may be an experiment the listener
                     enjoyed once and would never sit inside for an hour. A vote is
                     the reverse: weak about taste, strong about fit. The public
@@ -186,7 +178,7 @@ before this page goes in front of anyone.
                     people currently in it</em>, which is a different target.
                 </p>
                 <p>
-                    So the mixer signal probably wants to be discounted by recency
+                    So the library signal probably wants to be discounted by recency
                     and repetition — a sound that shows up across several saved
                     mixes over weeks is taste, a sound that appears once at the top
                     of a session is curiosity — while the vote signal wants to be
@@ -273,13 +265,12 @@ before this page goes in front of anyone.
                     that multiplies by <code>value</code> will silently treat every
                     downvote as a no-op until the two agree.
                 </p>
-                <h3>The personal mixer</h3>
+                <h3>The personal library</h3>
                 <p>
-                    The mixer is a Web Audio engine driven by Alpine and htmx. It
-                    opens on three random library sounds, two of them audible, at
-                    random gains — deliberately unfinished, so the listener arrives
-                    with room to build rather than a mix that is already done. The
-                    cap is eight layers. Swapping or searching for a layer queries
+                    The library uses a Web Audio mixer driven by Alpine and htmx. It
+                    opens on one empty layer, ready for the listener to choose their
+                    first sound. The cap is eight layers. Swapping or searching for
+                    a layer queries
                     <em>only</em> the listener's collection, which is where the
                     deck economy is enforced. Saving posts the layer JSON, clamps
                     each gain into [0, 1], drops any layer whose id isn't a real
@@ -559,7 +550,7 @@ before this page goes in front of anyone.
                     Not every label needs to be shown. There are two audiences with
                     genuinely different needs, and conflating them is what makes tag
                     vocabularies rot. <strong>Public tags</strong> are for the
-                    listener browsing their deck in the mixer — evocative, sparse,
+                    listener browsing their deck in the library — evocative, sparse,
                     curated, and allowed to be poetic. <strong>Hidden tags</strong>
                     exist only for the recommender — band occupancy bucket, event
                     density, keynote/signal role, provisional ISO coordinates,
@@ -903,7 +894,6 @@ before this page goes in front of anyone.
                     <code>src/player</code>, August 2026. Where this page and the
                     repository disagree, the repository is right.
                 </p>
-                {% endif %}
                 <!-- djlint:on -->
             </div>
         </div>

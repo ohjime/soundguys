@@ -6,9 +6,8 @@ fragment into `target` (app/home.html's #tab_content) on change — a radio only
 fires change when it becomes checked, so re-clicking the active tab fetches
 nothing.
 
-The 200ms swap delay gives #tab_content time to transition its complete current
-body out before htmx replaces it. Each response then mounts its own primary and
-secondary stages through c-core-tab-body.
+Each response replaces #tab_content directly. Tab changes have no content-level
+transition or delayed swap.
 -->
 <!-- Explicit widths and a single flex row avoid daisyUI's radio-tab sizing bug
      in iOS WebKit. -->
@@ -17,31 +16,31 @@ secondary stages through c-core-tab-body.
            id="home-tab-about"
            name="home_tabs"
            class="tab w-auto"
-           aria-label="ABOUT US"
+           aria-label="ABOUT"
            aria-controls="tab_content"
            hx-get="{% url 'app:home_tab_about' %}"
            hx-target="{{ target }}"
            hx-sync="{{ target }}:replace"
-           hx-swap="innerHTML swap:200ms" />
+           hx-swap="innerHTML" />
     <input type="radio"
-           id="home-tab-listen"
+           id="home-tab-explore"
            name="home_tabs"
            class="tab w-auto"
-           aria-label="LISTEN"
+           aria-label="EXPLORE"
            aria-controls="tab_content"
            checked="checked"
-           hx-get="{% url 'app:home_tab_mixer' %}"
+           hx-get="{% url 'explore:index' %}"
            hx-target="{{ target }}"
            hx-sync="{{ target }}:replace"
-           hx-swap="innerHTML swap:200ms" />
+           hx-swap="innerHTML" />
     <input type="radio"
            id="home-tab-library"
            name="home_tabs"
            class="tab w-auto"
            aria-label="LIBRARY"
            aria-controls="tab_content"
-           hx-get="{% url 'library:initial' %}"
+           hx-get="{% url 'app:home_tab_library' %}"
            hx-target="{{ target }}"
            hx-sync="{{ target }}:replace"
-           hx-swap="innerHTML swap:200ms" />
+           hx-swap="innerHTML" />
 </div>
