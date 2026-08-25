@@ -1,0 +1,43 @@
+<div id="{{ widget.attrs.id }}" class="authors-widget" data-authors-widget="true">
+    <input type="hidden" name="{{ widget.name }}_present" value="1">
+    <div class="authors-widget__rows" data-author-rows>
+        {% for author in widget.authors %}
+            <div class="authors-widget__row" data-author-row>
+                <label class="authors-widget__field">
+                    <span>Name</span>
+                    <input type="text" name="{{ widget.name }}_name" value="{{ author.name|default_if_none:'' }}" placeholder="Author name">
+                </label>
+                <label class="authors-widget__field">
+                    <span>Role</span>
+                    <input type="text" name="{{ widget.name }}_role" value="{{ author.role|default_if_none:'' }}" placeholder="Writer, editor…">
+                </label>
+                <label class="authors-widget__field authors-widget__field--url">
+                    <span>URL <span class="authors-widget__optional">(optional)</span></span>
+                    <input type="url" name="{{ widget.name }}_url" value="{{ author.url|default_if_none:'' }}" placeholder="https://example.com">
+                </label>
+                <button type="button" class="authors-widget__button authors-widget__button--remove" data-remove-author aria-label="Remove author" title="Remove author">−</button>
+            </div>
+        {% endfor %}
+    </div>
+    <button type="button" class="authors-widget__button authors-widget__button--add" data-add-author aria-label="Add author">
+        <span aria-hidden="true">+</span>
+        <span>Add author</span>
+    </button>
+    <template data-author-template>
+        <div class="authors-widget__row" data-author-row>
+            <label class="authors-widget__field">
+                <span>Name</span>
+                <input type="text" name="{{ widget.name }}_name" placeholder="Author name">
+            </label>
+            <label class="authors-widget__field">
+                <span>Role</span>
+                <input type="text" name="{{ widget.name }}_role" placeholder="Writer, editor…">
+            </label>
+            <label class="authors-widget__field authors-widget__field--url">
+                <span>URL <span class="authors-widget__optional">(optional)</span></span>
+                <input type="url" name="{{ widget.name }}_url" placeholder="https://example.com">
+            </label>
+            <button type="button" class="authors-widget__button authors-widget__button--remove" data-remove-author aria-label="Remove author" title="Remove author">−</button>
+        </div>
+    </template>
+</div>

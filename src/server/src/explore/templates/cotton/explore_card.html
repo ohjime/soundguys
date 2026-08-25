@@ -1,0 +1,12 @@
+<c-vars post="" />
+<!-- Post teaser card for the explore list; plain full-page navigation to the
+     detail page (get_absolute_url reverses against the main-site urlconf). -->
+<a href="{{ post.get_absolute_url }}"
+   class="max-w-2xl w-full rounded-3xl overflow-hidden">
+    <div class="px-6 sm:px-8 py-6 flex flex-col gap-2 text-left">
+        <h2 class="font-sans font-semibold text-[19px] sm:text-[23px] leading-[120%]">{{ post.title }}</h2>
+        {% if post.publication_date %}
+            <p class="font-sans text-[13px] text-base-content/60">{{ post.publication_date|date:"M j, Y" }}</p>
+        {% endif %}
+    </div>
+</a>

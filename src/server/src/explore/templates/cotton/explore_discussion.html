@@ -1,0 +1,133 @@
+<c-vars post=""
+        comments_page=""
+        comment_body=""
+        comment_errors=""
+        comment_count="0"
+        has_commented=""
+        pagination_items="" />
+<section id="explore-discussion-{{ post.pk }}"
+         aria-labelledby="explore-discussion-heading-{{ post.pk }}"
+         hx-get="{% url 'explore:discussion' slug=post.slug %}"
+         hx-trigger="auth-success from:body"
+         hx-target="this"
+         hx-swap="outerHTML"
+         class="flex flex-col gap-6 font-sans">
+    <div class="flex items-center justify-between gap-4">
+        <div>
+            <h3 id="explore-discussion-heading-{{ post.pk }}" class="text-xl font-semibold">Discussion</h3>
+            <p class="mt-1 text-sm text-base-content/60">
+                {{ comment_count }} comment{{ comment_count|pluralize }} · one response per listener
+            </p>
+        </div>
+    </div>
+    {% if request.user.is_authenticated and not has_commented %}
+        <form method="post"
+              action="{% url 'explore:create_comment' slug=post.slug %}"
+              hx-post="{% url 'explore:create_comment' slug=post.slug %}"
+              hx-target="#explore-discussion-{{ post.pk }}"
+              hx-swap="outerHTML"
+              x-data="{ posting: false }"
+              @submit="posting = true"
+              class="rounded-box border border-base-content/10 bg-base-100 p-4 shadow-sm sm:p-5">
+            {% csrf_token %}
+            <div class="mb-4 flex items-center gap-3">
+                <c-core-avatar size="size-10"
+                               image_url="{{ request.user.avatar_url }}"
+                               alt="{{ request.user.username }}" />
+                <div class="min-w-0">
+                    <p class="text-xs font-medium uppercase tracking-wider text-base-content/50">Commenting as</p>
+                    <p class="truncate font-semibold">{{ request.user.username }}</p>
+                </div>
+            </div>
+            <fieldset class="fieldset w-full">
+                <legend class="fieldset-legend">Your comment</legend>
+                <textarea name="body"
+                          id="explore-comment-body-{{ post.pk }}"
+                          class="textarea textarea-bordered h-28 w-full resize-y"
+                          maxlength="2000"
+                          placeholder="Share what you heard, noticed, or felt…"
+                          aria-label="Your comment"
+                          {% if comment_errors %}aria-invalid="true" aria-describedby="explore-comment-errors-{{ post.pk }}"{% endif %}
+                          required>{{ comment_body }}</textarea>
+                {% if comment_errors %}
+                    <div id="explore-comment-errors-{{ post.pk }}"
+                         class="label whitespace-normal text-error"
+                         role="alert">
+                        {% for error in comment_errors %}<span>{{ error }}</span>{% endfor %}
+                    </div>
+                {% else %}
+                    <div class="label whitespace-normal">Up to 2,000 characters. Comments cannot be edited after posting.</div>
+                {% endif %}
+            </fieldset>
+            <div class="mt-4 flex justify-end">
+                <button type="submit" :disabled="posting" class="btn btn-primary">
+                    <span x-show="!posting">Post comment</span>
+                    <span x-show="posting"
+                          class="loading loading-spinner loading-sm"
+                          aria-label="Posting"></span>
+                </button>
+            </div>
+        </form>
+    {% elif request.user.is_authenticated %}
+        <div class="alert alert-success alert-soft" role="status">
+            <span>You’ve already commented on this post. Each listener gets one comment.</span>
+        </div>
+    {% else %}
+        <div class="relative min-h-36 overflow-hidden rounded-box border border-base-content/10 bg-base-100 shadow-sm">
+            <textarea class="textarea h-36 w-full resize-none border-0 opacity-25"
+                      placeholder="Share what you heard, noticed, or felt…"
+                      aria-label="Sign in to comment"
+                      disabled></textarea>
+            <div class="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-base-100/75 p-5 text-center backdrop-blur-[2px]">
+                <p class="font-semibold">Sign in to join the discussion</p>
+                <p class="max-w-sm text-sm text-base-content/65">
+                    Comments are connected to your cosound profile, and each listener can respond once.
+                </p>
+                <button type="button"
+                        class="btn btn-primary btn-sm"
+                        hx-get="{% url 'login:login_modal' %}"
+                        hx-swap="none">Sign in to comment</button>
+            </div>
+        </div>
+    {% endif %}
+    <ul class="list rounded-box bg-base-100 shadow-md" aria-label="Comments">
+        {% for comment in comments_page %}
+            <li class="list-row items-start gap-3 sm:gap-4">
+                <c-core-avatar size="size-10"
+                               image_url="{{ comment.user.avatar_url }}"
+                               alt="{{ comment.user.username }}" />
+                <div class="min-w-0">
+                    <p class="truncate font-semibold">{{ comment.user.username }}</p>
+                    <time datetime="{{ comment.created_at|date:'c' }}"
+                          class="text-xs uppercase tracking-wide text-base-content/50">
+                        {{ comment.created_at|date:"M j, Y · g:i A" }}
+                    </time>
+                </div>
+                <p class="list-col-wrap whitespace-pre-line text-sm leading-relaxed text-base-content/80">{{ comment.body }}</p>
+            </li>
+        {% empty %}
+            <li class="p-8 text-center">
+                <p class="font-semibold">No comments yet</p>
+                <p class="mt-1 text-sm text-base-content/60">Be the first listener to respond.</p>
+            </li>
+        {% endfor %}
+    </ul>
+    {% if comments_page.has_other_pages %}
+        <nav aria-label="Comment pages" class="flex justify-center">
+            <div class="join">
+                {% for item in pagination_items %}
+                    {% if item.ellipsis %}
+                        <button type="button" class="join-item btn btn-disabled" aria-hidden="true">…</button>
+                    {% else %}
+                        <button type="button"
+                                class="join-item btn {% if item.current %}btn-active{% endif %}"
+                                {% if item.current %}aria-current="page"{% endif %}
+                                hx-get="{% url 'explore:discussion' slug=post.slug %}?page={{ item.number }}"
+                                hx-target="#explore-discussion-{{ post.pk }}"
+                                hx-swap="outerHTML">{{ item.number }}</button>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </nav>
+    {% endif %}
+</section>

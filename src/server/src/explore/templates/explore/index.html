@@ -1,0 +1,32 @@
+{% extends "core/base.html" %}
+{% block title %}
+    Explore
+{% endblock title %}
+{% block content %}
+    <c-core-loader hx_get="{% url 'explore:index' %}" />
+{% endblock content %}
+{% partialdef index %}
+    <!-- This partial is also server-side-included by app/home.html as the
+         EXPLORE tab body, which is why its context (get_explore_context) must
+         come from the including view too (app.views.home_initial). The latest
+         published post renders in full; its Previous Posts tab is reserved but
+         intentionally empty for now. -->
+    <div id="explore_body" class="w-full flex flex-col items-center gap-10">
+        {% if explore_post %}
+            <c-explore-article :post="explore_post"
+                               :body_html="explore_body_html"
+                               :sounds="explore_sounds"
+                               :comments_page="comments_page"
+                               :comment_body="comment_body"
+                               :comment_errors="comment_errors"
+                               :comment_count="comment_count"
+                               :has_commented="has_commented"
+                               :pagination_items="pagination_items"
+                               :previous_posts="previous_posts"
+                               :locked_previous_post="locked_previous_post" />
+        {% endif %}
+        {% if not explore_post and not explore_posts %}
+            <p class="opacity-60 font-sans text-[15px]">Nothing to explore yet.</p>
+        {% endif %}
+    </div>
+{% endpartialdef %}

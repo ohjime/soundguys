@@ -1,0 +1,51 @@
+<c-vars posts="" locked_post="" />
+<section aria-labelledby="previous-posts-heading" class="font-sans">
+    <h3 id="previous-posts-heading" class="sr-only">Previous posts</h3>
+    <ul class="list rounded-box bg-base-100 shadow-md" aria-label="Previous posts">
+        {% for previous_post in posts %}
+            <li>
+                <a href="{{ previous_post.get_absolute_url }}"
+                   class="list-row items-center transition-colors hover:bg-base-200 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary">
+                    <div class="list-col-grow min-w-0">
+                        <p class="truncate font-semibold">{{ previous_post.title }}</p>
+                    </div>
+                    <span class="badge badge-ghost whitespace-nowrap">
+                        {{ previous_post.comment_count }} comment{{ previous_post.comment_count|pluralize }}
+                    </span>
+                </a>
+            </li>
+        {% empty %}
+            {% if not locked_post %}
+                <li class="p-8 text-center text-sm text-base-content/60">No previous posts yet.</li>
+            {% endif %}
+        {% endfor %}
+        {% if locked_post %}
+            <li data-locked-previous-post class="relative overflow-hidden">
+                <div aria-hidden="true"
+                     class="list-row items-center opacity-45 blur-[2px] select-none">
+                    <div class="list-col-grow min-w-0">
+                        <p class="truncate font-semibold">{{ locked_post.title }}</p>
+                    </div>
+                    <span class="badge badge-ghost whitespace-nowrap">
+                        {{ locked_post.comment_count }} comment{{ locked_post.comment_count|pluralize }}
+                    </span>
+                </div>
+                <div class="pointer-events-none absolute inset-0 flex items-center justify-center bg-base-100/25">
+                    <span class="flex size-9 items-center justify-center rounded-full bg-base-100/90 shadow-sm"
+                          aria-label="More previous posts are locked">
+                        <svg xmlns="http://www.w3.org/2000/svg"
+                             viewBox="0 0 24 24"
+                             fill="none"
+                             stroke="currentColor"
+                             stroke-width="2"
+                             class="size-4"
+                             aria-hidden="true">
+                            <rect width="14" height="11" x="5" y="11" rx="2"></rect>
+                            <path d="M8 11V7a4 4 0 0 1 8 0v4"></path>
+                        </svg>
+                    </span>
+                </div>
+            </li>
+        {% endif %}
+    </ul>
+</section>
