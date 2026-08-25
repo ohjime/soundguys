@@ -10,10 +10,10 @@ apex/www site are unaffected.
 renders the shared login card, whose htmx endpoints must resolve on this host —
 the url tag reverses against the per-request urlconf, not ROOT_URLCONF.
 
-``mixer/`` is included for the same reason: saving is the one thing a studio mix
+``library/`` is included for the same reason: saving is the one thing a studio mix
 and a listener's mix do identically (a list of sound ids and gains), so the
-builder's transport posts to ``mixer:save``, and the title modal it opens posts
-to ``mixer:save_confirm``. Both have to resolve here.
+builder's transport posts to ``library:save``, and the title modal it opens posts
+to ``library:save_confirm``. Both have to resolve here.
 
 ``profile/`` keeps the shared authenticated header's account editor available
 on the studio host as well as the main site.
@@ -24,6 +24,6 @@ from django.urls import path, include
 urlpatterns = [
     path("", include("studio.urls")),
     path("login/", include("login.urls")),
-    path("mixer/", include("mixer.urls")),
+    path("library/", include("library.urls")),
     path("profile/", include("profile.urls")),
 ]
