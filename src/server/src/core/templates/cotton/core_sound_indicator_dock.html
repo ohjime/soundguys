@@ -1,0 +1,38 @@
+<!--
+Where the layer indicator sits on the artwork.
+
+The pill hugs the top-left corner of the card until the mix is full. At eight
+layers it spans nearly the whole card, and holding it against the corner reads
+as crammed rather than deliberate, so at that count it centres.
+
+Both states are one animated `left` in pixels rather than a `left-4` ->
+`left-1/2 -translate-x-1/2` class swap. The swap looked like a reset instead of
+a move: `-translate-x-1/2` resolves against the pill's own width, and that width
+grows by a button in the same frame the eighth layer lands, so the transform
+interpolated against a moving basis while the anchor changed underneath it.
+Measuring leaves a single length to travel along.
+
+`ready` holds the transition off until after the first measurement, so a mix
+that loads with eight layers already in it opens centred rather than sliding
+there. `@resize` re-measures because the centred position is derived from the
+card's width, not expressed as a percentage of it.
+-->
+<div x-data="{
+         left: 16,
+         ready: false,
+         place() {
+             const box = this.$el.offsetParent;
+             if (!box) return;
+             this.left = this.$store.soundLayers.isFull
+                 ? Math.round((box.clientWidth - this.$el.offsetWidth) / 2)
+                 : 16;
+         }
+     }"
+     x-init="$nextTick(() => { place(); requestAnimationFrame(() => ready = true) })"
+     x-effect="$store.soundLayers.layers.length; $nextTick(() => place())"
+     @resize.window.debounce.100ms="place()"
+     :style="`left: ${left}px`"
+     :class="ready && 'transition-[left] duration-300 ease-out'"
+     class="absolute z-10 top-0 -translate-y-1/2 ring-4 ring-neutral-content/70 flex justify-center rounded-md overflow-hidden bg-white">
+    {{ slot }}
+</div>

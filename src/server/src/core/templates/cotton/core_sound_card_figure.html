@@ -1,0 +1,9 @@
+<c-vars hx-swap-oob="" />
+<div id="card-figure"
+     {% if hx_swap_oob %}hx-swap-oob="{{ hx_swap_oob }}"{% endif %}
+     class="grid w-full h-full htmx-added:opacity-0 motion-preset-shrink motion-preset-fade-md htmx-swapping:motion-duration-200 htmx-swapping:motion-opacity-out-0">
+    <!-- The deck is shrink-to-fit. This intrinsic square preserves its normal
+         width when the slot has no carousel items to size it. -->
+    <div data-library-artwork-placeholder aria-hidden="true" class="col-start-1 row-start-1 aspect-square w-68 max-w-full"></div>
+    <div class="col-start-1 row-start-1 min-h-0 min-w-0">{{ slot }}</div>
+</div>

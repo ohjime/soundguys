@@ -1,0 +1,38 @@
+<!--
+The pill on the card: one numbered button per layer, then `+`.
+
+Tapping a number moves to that layer; tapping the one you are already on mutes
+it — except on a blank layer, which has nothing to mute yet, so that tap does
+nothing and the dotted underline says why.
+
+`+` rides at the end so it slides right as layers appear, and it leaves entirely
+once `canAddLayer` goes false — at the eight-layer cap, or on a mix mounted with
+adding switched off (c-core-sound-player's `disable_add`). It is `x-if` rather than
+`x-show` so a full pill is genuinely eight buttons wide: c-core-sound-indicator-dock
+measures this element to centre it at that count, and a hidden ninth button
+would still be inside the width it measures.
+-->
+<c-vars isOriginalMix="false" />
+<div class="join w-fit ring-4" x-data="{ isOriginalMix: {% if isOriginalMix and isOriginalMix != 'false' %}true{% else %}false{% endif %} }" rounded-none>
+    <template x-for="(layer, index) in $store.soundLayers.layers" :key="layer.sound_id">
+        <button type="button"
+                class="font-mono join-item btn-sm btn btn-neutral border-none h-7 rounded-none"
+                :class="[ (isOriginalMix && $store.soundLayers.layers.length === 1) ? 'px-2 min-w-7.5 w-auto' : 'w-7.5', $store.soundLayers.currentIndex === index ? (!isOriginalMix || $store.soundLayers.layers.length > 1 ? '!text-white text-xl font-extrabold' : '!text-white text-xs font-bold tracking-wider') : 'text-gray-300 text-xs font-light', layer.isDraft ? 'underline decoration-dotted underline-offset-2' : '', $store.soundLayers.swappingLayer ? '!bg-neutral-content transition-none' : '', $store.soundLayers.currentIndex === index && $store.soundLayers.swappingLayer ? 'text-shadow-lg/30 motion-preset-pulse-sm motion-delay-500 pointer-events-none' : '', $store.soundLayers.currentIndex !== index && $store.soundLayers.swappingLayer ? '!text-neutral/40 pointer-events-none' : '' ]"
+                :style="$store.soundLayers.swappingLayer ? '' : `opacity: ${($store.soundLayers.isSilenced(layer) ? 50 : 50 + (layer.gain || 0) * 0.5) / 100};`"
+                @click="$store.soundLayers.currentIndex !== index ? $dispatch('carousel-goto', index) : (!layer.isDraft && $store.soundLayers.toggleMute(layer))"
+                x-text="(isOriginalMix && $store.soundLayers.layers.length === 1) ? 'SINGLE' : (index + 1)"></button>
+    </template>
+    <!-- Adds an empty layer and rides the carousel over to it. The goto is
+         dispatched from here rather than from the store so the store stays out
+         of the carousel's business; it bubbles to the window listener that
+         c-core-sound-carousel installs. -->
+    <template x-if="$store.soundLayers.canAddLayer">
+        <button type="button"
+                class="font-mono join-item btn-sm btn btn-neutral border-none w-7.5 h-7 rounded-none text-base font-light text-gray-300"
+                aria-label="Add a layer"
+                title="Add a layer"
+                :class="$store.soundLayers.swappingLayer ? '!bg-neutral-content !text-neutral/40 pointer-events-none transition-none' : ''"
+                :style="$store.soundLayers.swappingLayer ? '' : 'opacity: 0.75;'"
+                @click="$store.soundLayers.addBlankLayer().then(layer => layer && $dispatch('carousel-goto', $store.soundLayers.currentIndex))">+</button>
+    </template>
+</div>

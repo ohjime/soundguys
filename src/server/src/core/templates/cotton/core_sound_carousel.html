@@ -1,0 +1,108 @@
+<c-vars name="soundLayers" artist_url="" swap_url="" />
+<!--
+`artist_url` is passed in rather than reversed here, because this component is
+shared across urlconfs. The url tag resolves against the *per-request* urlconf
+(see config.middleware.SubdomainURLConf), and the studio host does not mount
+`app` — reversing `app:artist_details` in here would blow up the studio with
+NoReverseMatch. Callers that have the route pass it; the studio does not, and
+the artist name renders as plain text.
+
+`swap_url` rides along for the same reason and reaches c-core-sound-empty-layer,
+which is what a blank layer looks like on the card. The library passes its swap
+route so pressing the empty card opens the sound picker; the studio passes
+nothing, because there the card is a readout and the settings pane fills the
+layer in.
+
+`library:keep_sound` below is reversed rather than passed for the opposite
+reason: `library/` *is* mounted on every host that renders a soundscape card, so
+keeping a sound works the same wherever the card is read from.
+
+The behaviour is not here: vite/assets/js/layer-carousel.js has what a jump is,
+what a swipe is, and why the selection must not walk the layers in between. This
+file is the wiring and the caption.
+-->
+<div class="relative w-full h-full" x-data="layerCarousel('{{ name }}')" x-init="$nextTick(() => start())"
+    @carousel-prev.window="move(-1)" @carousel-next.window="move(1)" @carousel-goto.window="select($event.detail)"
+    @layer-saved.window="applySaved($event.detail)">
+    <!-- Barely debounced on purpose: a swipe *is* the selection, so the pill and
+         the studio's tab strip should track the finger rather than catch up
+         after it. A jump does not walk the layers in between because
+         updateActive() ignores the animation, not because this handler is slow.
+         The three release() handlers are how a hand on the artwork cuts a jump
+         short: whatever it was flying to, the swipe now decides. -->
+    <div x-ref="carousel" @scroll.debounce.5ms="updateActive()" @pointerdown="release()" @touchstart.passive="release()"
+        @wheel.passive="release()" class="carousel w-full h-full">
+        <!-- A blank layer has no artwork to show, so it gets its own face
+             instead. Both branches are x-if rather than x-show: c-core-image
+             would otherwise start loading a placeholder nobody sees, and the
+             empty card's htmx attributes would sit armed behind it. -->
+        <template x-for="(layer, index) in $store.{{ name }}.layers" :key="layer.sound_id">
+            <div class="carousel-item relative h-full w-full transition-[filter] duration-300 ease-out"
+                :style="`filter: grayscale(${$store.{{ name }}.grayscaleFor(layer)}%)`">
+                <template x-if="layer.isDraft">
+                    <c-core-sound-empty-layer swap_url="{{ swap_url }}" />
+                </template>
+                <template x-if="!layer.isDraft">
+                    <div class="contents">
+                        <c-core-image bind_src="layer.artwork_url" bind_alt="layer.sound_title" class="w-full" />
+                        <div
+                            class="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-black/80 to-transparent z-10">
+                        </div>
+                        <div
+                            class="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/60 to-transparent z-10">
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </template>
+    </div>
+    <!-- The caption and heart read the store rather than a copy taken when the
+         carousel last settled. They stay fixed while the artwork moves, and
+         immediately reflect whichever layer the carousel selects. -->
+    <div
+        class="pointer-events-none absolute inset-0 z-20 p-3 pt-8 font-serif italic flex flex-col justify-between text-white font-thin text-shadow-lg">
+        <div class="text-left text-lg leading-tight pr-12" x-text="$store.{{ name }}.currentLayer?.sound_title"></div>
+        <!-- Blank and browser-local layers have no Sound row for the collection
+             endpoint to save. Keeping the control out of the tree also avoids
+             presenting an action that can only fail. -->
+        <button type="button"
+            x-show="$store.{{ name }}.currentLayer && !$store.{{ name }}.currentLayer.isDraft && !$store.{{ name }}.currentLayer.isLocal"
+            x-cloak
+            class="pointer-events-auto absolute top-6.5 right-3 grid size-8 place-items-center rounded-full bg-black/25 text-white shadow-md backdrop-blur-sm transition hover:scale-105 hover:bg-black/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:pointer-events-none disabled:opacity-60"
+            :aria-label="$store.{{ name }}.currentLayer?.saved ? 'Remove from favourite sounds' : 'Add to favourite sounds'"
+            :title="$store.{{ name }}.currentLayer?.saved ? 'Remove from favourite sounds' : 'Add to favourite sounds'"
+            hx-post="{% url 'library:keep_sound' %}" hx-swap="none" hx-disabled-elt="this"
+            :hx-vals="JSON.stringify({ sound_id: $store.{{ name }}.currentLayer?.sound_id })">
+            <svg class="size-5 drop-shadow-md transition-colors"
+                :class="$store.{{ name }}.currentLayer?.saved ? 'fill-red-500 text-red-500' : 'fill-transparent text-white'"
+                xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"
+                aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
+            </svg>
+        </button>
+        <!-- `allowAdd` is the editability switch. Do not use `canAddLayer`
+             here: a full mix cannot add a ninth layer, but it is still an
+             editable mix and must be able to remove one. -->
+        <button type="button" x-show="$store.{{ name }}.allowAdd" x-cloak
+            class="pointer-events-auto absolute bottom-3 left-3 grid size-8 place-items-center rounded-full bg-black/25 text-white/80 shadow-md backdrop-blur-sm transition hover:scale-105 hover:bg-error/70 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            aria-label="Remove current layer" title="Remove current layer" @click="removeCurrent()">
+            <c-icons.trash class="size-4" />
+        </button>
+        {% if artist_url %}
+        <!-- A locally-dropped studio track has no Sound row, so there is no
+                 artist page to open — the button goes inert rather than posting
+                 an id the server cannot resolve. -->
+        <button type="button"
+            class="pointer-events-auto self-end text-right pb-1 pr-1 text-sm opacity-90 transition enabled:cursor-pointer enabled:hover:opacity-100 enabled:hover:underline"
+            x-text="$store.{{ name }}.currentLayer?.sound_artist" :disabled="$store.{{ name }}.currentLayer?.isLocal"
+            title="View artist" hx-get="{{ artist_url }}" hx-swap="none"
+            :hx-vals="JSON.stringify({ sound_id: $store.{{ name }}.currentLayer?.sound_id })"></button>
+        {% else %}
+        <div class="self-end pb-1 pr-1 text-right text-sm opacity-90"
+            x-text="$store.{{ name }}.currentLayer?.sound_artist">
+        </div>
+        {% endif %}
+    </div>
+
+</div>

@@ -1,0 +1,52 @@
+<c-vars require_start="true" />
+<style>
+    @property --radialprogress {
+        syntax: '<percentage>';
+        inherits: true;
+        initial-value: 0%;
+    }
+
+    .sound-loading-progress::before {
+        background:
+            radial-gradient(farthest-side, currentColor 98%, transparent) top / var(--thickness) var(--thickness) no-repeat,
+            conic-gradient(currentColor var(--radialprogress), color-mix(in oklab, var(--color-neutral-content) 20%, transparent) 0);
+    }
+</style>
+
+<div x-show="$store.soundLayers.tracksLoading || $store.soundLayers.loadError || {% if require_start == 'true' %}!$store.soundLayers.started{% else %}false{% endif %}"
+     x-cloak
+     x-transition:leave="transition ease-in duration-300"
+     x-transition:leave-start="opacity-100"
+     x-transition:leave-end="opacity-0"
+     class="absolute inset-0 z-50 rounded-b-4xl rounded-t-3xl bg-neutral-900/90 flex items-center justify-center">
+
+    <!-- Loading state -->
+    <div x-show="$store.soundLayers.tracksLoading && !$store.soundLayers.loadError" class="flex flex-col items-center gap-3 text-white">
+
+        <div class="sound-loading-progress radial-progress text-primary brightness-110"
+             :style="`--value:${$store.soundLayers.loadingTotal ? Math.round($store.soundLayers.loadedCount / $store.soundLayers.loadingTotal * 100) : 0}`"
+             role="progressbar">
+            <span x-text="`${$store.soundLayers.loadedCount} / ${$store.soundLayers.loadingTotal}`" class="text-xs text-white"></span>
+        </div>
+        Loading sounds...
+    </div>
+
+    <div x-show="$store.soundLayers.loadError" class="flex max-w-64 flex-col items-center gap-3 text-center text-white">
+        <strong>One of the sounds could not be loaded.</strong>
+        <span class="text-xs opacity-70" x-text="$store.soundLayers.loadError"></span>
+        <button type="button" class="btn btn-sm" @click="$store.soundLayers.initialize()">Try again</button>
+    </div>
+
+    {% if require_start == "true" %}
+        <!-- Ready state: tap anywhere to start -->
+        <div x-show="!$store.soundLayers.tracksLoading && !$store.soundLayers.loadError"
+             x-transition:enter="transition ease-out duration-500"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             @click="$store.soundLayers.playAll()"
+             class="absolute inset-0 flex items-center justify-center cursor-pointer">
+            <div class="skeleton-text skeleton !text-neutral-content !bg-base-content">Click anywhere to start</div>
+        </div>
+    {% endif %}
+
+</div>

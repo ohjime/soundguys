@@ -533,3 +533,9 @@ class ListenerAdmin(ModelAdmin):
 @admin.register(Cosound)
 class CosoundAdmin(ModelAdmin):
     list_display = ["created_at"]
+    # Present so other admins can autocomplete a cosound (explore posts pick
+    # one this way). `=id` is an exact match rather than the default icontains:
+    # a cosound has no name to search, and LIKE against an integer primary key
+    # is an error on Postgres. The hashid is the other handle a person has on
+    # a specific mix, and it is a text column, so it takes the usual match.
+    search_fields = ["=id", "hashid"]

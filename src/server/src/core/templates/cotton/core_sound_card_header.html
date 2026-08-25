@@ -1,0 +1,6 @@
+<c-vars hx-swap-oob="" />
+<div id="card-header"
+     {% if hx_swap_oob %}hx-swap-oob="{{ hx_swap_oob }}"{% endif %}
+     class="w-full flex htmx-added:opacity-0 motion-preset-shrink motion-preset-fade-md htmx-swapping:motion-duration-200 htmx-swapping:motion-opacity-out-0">
+    {{ slot }}
+</div>

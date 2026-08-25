@@ -1,6 +1,6 @@
 <c-vars src="" alt="" bind_src="" bind_alt="" class="" />
+<!-- djlint:off -->
 <div
-    {# djlint:off #}
     x-data="{
         loaded: false,
         {% if bind_src %}get _src() { return {{ bind_src }}; },{% endif %}
@@ -12,16 +12,16 @@
     {% if bind_src %}
     x-effect="void _src; loaded = false; $nextTick(() => { const img = $el.querySelector('img'); if (img?.complete && img.naturalWidth > 0) loaded = true; });"
     {% endif %}
-    {# djlint:on #}
     class="relative overflow-hidden {{ class }}">
-    {# Skeleton shown while image is loading #}
+    <!-- djlint:on -->
+    <!-- Skeleton shown while image is loading -->
     <div x-show="!loaded"
          x-transition:leave="transition ease-in duration-300"
          x-transition:leave-start="opacity-100"
          x-transition:leave-end="opacity-0"
          class="absolute inset-0 animate-pulse rounded-[inherit]"
          style="background: #1a1a1a; box-shadow: inset 0 0 24px 6px rgba(74, 222, 128, 0.35)"></div>
-    {# Actual image, invisible until loaded #}
+    <!-- Actual image, invisible until loaded -->
     <img {% if bind_src %}:src="{{ bind_src }}"{% else %}src="{{ src }}"{% endif %}
          {% if bind_alt %}:alt="{{ bind_alt }}"{% else %}alt="{{ alt }}"{% endif %}
          x-show="loaded"
