@@ -1,16 +1,16 @@
 <!--
 The right pane: the deck card, showing how the soundscape being built reads.
 
-It is `mixer/index.html#mixer` with the layer options pill left exactly as the
-mixer has it — Keep and Swap, in their usual place — but disabled. The transport
+It is `library/index.html#library` with the layer options pill left exactly as the
+library has it — Keep and Swap, in their usual place — but disabled. The transport
 sits above the card rather than inside it, the same way app/home.html places
-c-mixer-master over its deck. Every one of those actions is driven from the
+c-core-sound-master over its deck. Every one of those actions is driven from the
 settings pane on the left instead; the pill stays so the card still reads as a
 cosound card rather than a stripped-down variant of one.
 
 The `x-if` guards on `isEmpty` are load-bearing rather than cosmetic. The studio
 always keeps at least one layer, but removing the last one leaves the mix empty
-for the tick it takes the replacement blank layer to resolve. c-mixer-slider's
+for the tick it takes the replacement blank layer to resolve. c-core-sound-slider's
 x-effect reads `$store.soundLayers.currentLayer.gain` unguarded, so it would
 throw during that tick. x-show would not help — Alpine still initialises and
 evaluates hidden children — so the component has to genuinely not exist.
@@ -18,35 +18,35 @@ evaluates hidden children — so the component has to genuinely not exist.
 <c-core-card showExit="false" bgColor="bg-[#1f3f23]" ringColor="ring-[#2d2d2d]">
     <figure class="relative ring-7 ring-neutral-content/70 rounded-t-md mx-6 mt-7 overflow-visible bg-base-300">
         <div class="static aspect-square w-full rounded-t-md overflow-hidden">
-            <c-mixer-indicator-dock>
-                <c-mixer-card-header>
+            <c-core-sound-indicator-dock>
+                <c-core-sound-card-header>
                     <template x-if="!$store.soundLayers.isEmpty">
-                        <c-mixer-layer-indicator isOriginalMix="true" />
+                        <c-core-sound-indicator isOriginalMix="true" />
                     </template>
-                </c-mixer-card-header>
-            </c-mixer-indicator-dock>
-            <c-mixer-card-figure>
+                </c-core-sound-card-header>
+            </c-core-sound-indicator-dock>
+            <c-core-sound-card-figure>
                 <template x-if="!$store.soundLayers.isEmpty">
-                    <c-mixer-layer-carousel />
+                    <c-core-sound-carousel />
                 </template>
-            </c-mixer-card-figure>
+            </c-core-sound-card-figure>
         </div>
         <!-- The arrows are absolutely positioned against this figure, so the
              x-if wrapper uses `contents` to stay out of the layout. -->
         <template x-if="!$store.soundLayers.isEmpty">
             <div class="contents">
-                <c-mixer-arrows />
+                <c-core-sound-arrows />
             </div>
         </template>
     </figure>
     <template x-if="!$store.soundLayers.isEmpty">
-        <c-mixer-slider />
+        <c-core-sound-slider />
     </template>
     <div class="relative ring-5 ring-amber-600/60 mx-4 mb-4 rounded-xs rounded-b-2xl bg-white/65 text-black">
         <div class="h-30 overflow-y-auto py-2 px-4">
-            <c-mixer-card-body>
+            <c-core-sound-card-body>
                 <c-studio-layer-details />
-            </c-mixer-card-body>
+            </c-core-sound-card-body>
         </div>
         <div class="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-neutral-content/80 to-transparent rounded-b-2xl">
         </div>
@@ -55,7 +55,7 @@ evaluates hidden children — so the component has to genuinely not exist.
          must not exist while the mix is momentarily empty. -->
     <template x-if="!$store.soundLayers.isEmpty">
         <div class="absolute z-10 bottom-0 left-1/2 -translate-x-1/2 ring-6 ring-[#2d2d2d]/60 drop-shadow-2xl flex justify-center rounded-t-2xl overflow-hidden bg-base-100 w-fit">
-            <c-mixer-layer-options disabled="true" />
+            <c-library-layer-options disabled="true" />
         </div>
     </template>
 </c-core-card>

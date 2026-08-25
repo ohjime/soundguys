@@ -10,8 +10,8 @@ The studio's mix builder: two panes over one shared mix.
 
 Both panes drive the same `soundLayers` Alpine store, so the card on the right
 is not a preview that has to be kept in step — it is the same state, rendered.
-That is also why every mixer part inside the card (carousel, fader, arrows,
-layer indicator) is the mixer's own component, used unmodified.
+That is also why every library part inside the card (carousel, fader, arrows,
+layer indicator) is the library's own component, used unmodified.
 
 Being the same state is also how the two panes divide up: each control lives in
 exactly one of them. The card's fader is live, so level, mute and solo are the
@@ -46,7 +46,7 @@ dispatching `studio:*` events.
      @studio:wake.window="wake()"
      @studio:open-library.window="openLibrary($event.detail)"
      @studio:error.window="fail($event.detail)">
-    <c-mixer-player :sounds="sounds" artist_name="{{ artist_name }}" />
+    <c-core-sound-player :sounds="sounds" artist_name="{{ artist_name }}" />
     <!-- Local-only pickers. No `name`, never inside a submitting form. -->
     <input x-ref="trackInput" type="file" accept="audio/*" multiple class="hidden" @change="onTrackInput($event)" />
     <input x-ref="artInput" type="file" accept="image/*" class="hidden" @change="onArtInput($event)" />
@@ -81,7 +81,7 @@ dispatching `studio:*` events.
              @drop.prevent="dragging = false; onDrop($event)">
             <div class="w-full max-w-80 transition-all lg:pb-20" :class="dragging && 'scale-[1.02] drop-shadow-2xl'">
                 <!-- Transport above the deck, the way app/home.html sits
-                     c-mixer-master over the mixer's own card. -->
+                     c-core-sound-master over the library's own card. -->
                 <div class="mb-6 flex w-full justify-center">
                     <c-studio-master />
                 </div>

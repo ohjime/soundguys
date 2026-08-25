@@ -3,7 +3,7 @@ from django.http import HttpResponse
 from django.shortcuts import render
 
 from core.models import Listener
-from mixer.utils import serialize_sounds
+from library.utils import serialize_sounds
 from studio.utils import get_artist
 
 # The studio's views. The builder is served two ways from the same partials:
@@ -33,14 +33,14 @@ def _blank_layer(artist, index=1):
     return {
         "sound_id": f"draft-{index}",
         "sound_file": "",
-        "sound_title": "Untitled layer",
+        "sound_title": "",
         "sound_artist": artist.name if artist else "",
         "artwork_url": "",
         "gain": 50,
         "mute": False,
         "saved": False,
-        "flavor": "",
-        "tags": "blank",
+        "flavor": "In the begining there was darkness.",
+        "tags": "Void",
         "is_local": True,
         "is_draft": True,
     }
@@ -49,7 +49,7 @@ def _blank_layer(artist, index=1):
 def _library(user):
     """The sounds this user has collected, as a queryset.
 
-    The studio pulls from the same Listener collection the mixer's swap panel
+    The studio pulls from the same Listener collection the library's swap panel
     uses — an artist builds with sounds they have kept, not the whole catalogue.
     """
     try:
@@ -85,7 +85,7 @@ def studio_library(request):
     """Open the library picker over the card.
 
     Answers with out-of-band swaps for both card regions, the same shape the
-    mixer's swap panel uses, so one response repaints the figure and the body.
+    library's swap panel uses, so one response repaints the figure and the body.
     """
     if not request.htmx:
         return HttpResponse("Request Denied.")
