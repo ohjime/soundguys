@@ -64,17 +64,26 @@
           hx-swap="innerHTML swap:250ms">
         <!-- djlint:on -->
         {% csrf_token %}
-        <div class="join w-full">
-            <input class="input join-item w-full"
-                   type="text"
-                   name="code"
-                   inputmode="numeric"
-                   pattern="[0-9]*"
-                   placeholder="Enter code"
-                   autocomplete="one-time-code"
-                   required />
+        <div class="flex w-full flex-col items-center gap-4">
+            <label class="otp otp-sm sm:otp-lg otp-neutral">
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <input type="text"
+                       name="code"
+                       aria-label="6-digit verification code"
+                       inputmode="numeric"
+                       maxlength="6"
+                       pattern="[0-9]{6}"
+                       autocomplete="one-time-code"
+                       autofocus
+                       required />
+            </label>
             <button type="submit"
-                    class="btn btn-neutral join-item swap items-center justify-center"
+                    class="btn btn-neutral swap w-full items-center justify-center"
                     :class="{ 'swap-active': pressed, 'btn-disabled': pressed }">
                 <span class="swap-off w-full">Verify</span>
                 <span class="swap-on loading loading-infinity loading-lg w-full"></span>
