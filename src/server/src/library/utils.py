@@ -30,13 +30,28 @@ def generate_sound_artwork(sound):
     return "https://picsum.photos/seed/{}/400/400".format(sound.id)
 
 
-# How many layers the mixer opens on, and how many of those start audible.
-#
-# Well under the eight-layer cap on purpose: the `+` on the layer indicator is
-# what fills the rest in, so a listener arrives with room to build rather than a
-# mix that is already finished.
+# Defaults retained for callers that explicitly request a generated random mix.
+# The library tab itself now starts from get_empty_layer instead.
 OPENING_LAYERS = 3
 OPENING_AUDIBLE_LAYERS = 2
+
+
+def get_empty_layer():
+    """Return the blank layer the library opens on."""
+    return {
+        "sound_id": "draft-1",
+        "sound_file": "",
+        "sound_title": "",
+        "sound_artist": "",
+        "artwork_url": "",
+        "gain": 50,
+        "mute": False,
+        "saved": False,
+        "flavor": "In the begining there was darkness.",
+        "tags": "Void",
+        "is_local": True,
+        "is_draft": True,
+    }
 
 
 def get_random_sounds(user=None):
@@ -71,19 +86,31 @@ def get_random_sounds(user=None):
     return sounds
 
 
-def serialize_sounds(sounds):
+def serialize_sounds(sounds, user=None):
+    saved_ids = set()
+    if user and user.is_authenticated:
+        try:
+            from core.models import Listener
+
+            saved_ids = set(
+                Listener.objects.get(user=user).collection.values_list("id", flat=True)
+            )
+        except Listener.DoesNotExist:
+            pass
+
     return [
         {
             **sound.asLayer(with_gain=0.5),
             "gain": 50,
             "mute": False,
-            "saved": True,
+            "saved": sound.pk in saved_ids,
             "flavor": sound.flavor or "",
-            "tags": " / ".join(sound.tags.names()) or "Unknown",
-            "artwork_url": generate_sound_artwork(sound),
+            "tags": " / ".join(sound.tags.names()) if hasattr(sound, "tags") else "Unknown",
+            "artwork_url": sound.art.url if sound.art else generate_sound_artwork(sound),
             "id": sound.id,
             "title": sound.title,
             "artist": sound.artist_name,
+            "artist_name": sound.artist_name,
         }
         for sound in sounds
     ]

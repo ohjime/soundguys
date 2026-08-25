@@ -19,10 +19,11 @@
                name="q"
                required
                placeholder="Search {{ count }} Sounds"
-               hx-get="{% url 'mixer:search' %}"
+               hx-get="{% url 'library:search' %}"
                hx-trigger="input changed delay:300ms, search"
                hx-target="#sound-search-results"
                hx-swap="innerHTML"
-               hx-indicator="#sound-search-indicator" />
+               hx-indicator="#sound-search-indicator"
+               @keydown.escape="document.getElementById('cancel-swap-button-list')?.click()" />
     </label>
 </fieldset>

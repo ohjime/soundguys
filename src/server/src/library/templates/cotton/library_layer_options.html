@@ -1,7 +1,7 @@
 <c-vars disabled="" />
 <!--
 `disabled` renders the pill inert. The studio shows it that way: the card keeps
-the mixer's familiar Keep / Swap controls in their usual place, but every one of
+the library's familiar Keep / Swap controls in their usual place, but every one of
 those actions is driven from the settings pane instead. A disabled button emits
 no click, so the htmx requests below never fire — the attributes can stay.
 
@@ -18,7 +18,7 @@ way: it is how a blank layer stops being blank.
             {% if disabled %}disabled{% else %}:disabled="$store.soundLayers.currentIsDraft"{% endif %}
             x-show="!$store.soundLayers.swappingLayer"
             x-cloak
-            hx-post="{% url 'mixer:keep_sound' %}"
+            hx-post="{% url 'library:keep_sound' %}"
             hx-swap="none"
             :hx-vals="JSON.stringify({ sound_id: $store.soundLayers.currentLayer.sound_id })"
             @layer-saved.window="$store.soundLayers.currentLayer.saved = $event.detail.saved">
@@ -47,7 +47,7 @@ way: it is how a blank layer stops being blank.
             {% if disabled %}disabled{% endif %}
             x-show="$store.soundLayers.swappingLayer"
             x-cloak
-            hx-get="{% url 'mixer:carousel' %}"
+            hx-get="{% url 'library:carousel' %}"
             hx-swap="none swap:300ms"
             hx-on:htmx:before-swap="document.querySelectorAll('#card-figure, #card-body').forEach(el => el.classList.add('htmx-swapping'))"
             @click="$store.soundLayers.swappingLayer = false">
@@ -63,7 +63,7 @@ way: it is how a blank layer stops being blank.
     <button class="btn btn-sm"
             {% if disabled %}disabled{% endif %}
             :class="{ 'btn-active btn-disabled': $store.soundLayers.swappingLayer }"
-            hx-get="{% url 'mixer:swap' %}"
+            hx-get="{% url 'library:swap' %}"
             hx-swap="none swap:300ms"
             hx-on:htmx:before-swap="document.querySelectorAll('#card-figure, #card-body').forEach(el => el.classList.add('htmx-swapping'))"
             hx-on:htmx:after-swap="document.getElementById('sound-search-input')?.focus()"

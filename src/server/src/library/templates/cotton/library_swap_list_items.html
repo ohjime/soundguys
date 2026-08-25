@@ -1,0 +1,51 @@
+<c-vars sounds />
+{{ sounds|json_script:"swapCandidates" }}
+<!-- The picker opens two ways now, and the heading says which: Swap on a layer
+     that already has a sound, or pressing a blank layer's card. Reading the
+     store keeps it right even though this list is re-rendered by the search
+     endpoint, which knows nothing about the layer being filled. -->
+<li class="p-4 pt-8 pb-2 text-sm opacity-95 font-medium sticky top-0 z-10 bg-base-300 flex items-center justify-between"
+    x-data>
+    <span x-text="$store.soundLayers.currentIsDraft ? 'Select a Sound' : 'Select Replacement Sound'"></span>
+    <button type="button"
+            id="cancel-swap-button-list"
+            class="btn btn-xs btn-ghost hover:bg-base-200 text-xs font-normal cursor-pointer"
+            hx-get="{% url 'library:carousel' %}"
+            hx-swap="none swap:300ms"
+            hx-on:htmx:before-swap="document.querySelectorAll('#card-figure, #card-body').forEach(el => el.classList.add('htmx-swapping'))"
+            @click="$store.soundLayers.swappingLayer = false">Cancel</button>
+</li>
+{% for sound in sounds %}
+    <!-- djlint:off -->
+        <li class="list-row"
+            x-data="{ get inMix() { return $store.soundLayers.layers.some(l => l.sound_id === {{ sound.id }}) } }"
+            :class="inMix ? 'opacity-40 pointer-events-none' : 'cursor-pointer hover:bg-base-200'"
+            hx-get="{% url 'library:carousel' %}"
+            hx-swap="none swap:300ms"
+            hx-on:htmx:before-swap="document.querySelectorAll('#card-figure, #card-body').forEach(el => el.classList.add('htmx-swapping'))"
+            @click="(async () => {
+                if (inMix) return;
+                const candidates = JSON.parse(document.getElementById('swapCandidates').textContent);
+                const store = $store.soundLayers;
+                if (store.currentIsDraft && !store.started) await store.playAll();
+                await store.replaceLayer(store.currentIndex, candidates[{{ forloop.counter0 }}]);
+            })()"
+        >
+    <!-- djlint:on -->
+    <div>
+        <img class="size-10 rounded-box"
+             src="{{ sound.artwork_url }}"
+             alt="{{ sound.title }} artwork">
+    </div>
+    <div>
+        <div class="text-sm font-semibold">{{ sound.title }}</div>
+        <div class="text-xs font-semibold opacity-60">
+            <span x-text="inMix ? 'Already in mix' : ''">{{ sound.artist_name }}</span>
+            <span x-show="!inMix">{{ sound.artist_name }}</span>
+        </div>
+    </div>
+</li>
+{% empty %}
+<li class="p-4 text-xs opacity-60">No sounds found.</li>
+<!-- djlint:off -->
+{% endfor %}

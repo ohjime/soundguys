@@ -4,7 +4,7 @@ from django.utils.safestring import mark_safe
 from unfold.admin import ModelAdmin, TabularInline, StackedInline
 
 from core.models import Listener
-from mixer.models import SoundMix
+from library.models import SoundMix
 
 
 @admin.register(SoundMix)
@@ -50,7 +50,7 @@ class ListenerAdmin(CurrentListenerAdmin):
             )
         rows = []
         for m in mixes:
-            url = reverse("admin:mixer_soundmix_change", args=[m.pk])
+            url = reverse("admin:library_soundmix_change", args=[m.pk])
             title = m.title or f"Mix #{m.pk}"
             ts = m.created_at.strftime("%Y-%m-%d %H:%M")
             rows.append(

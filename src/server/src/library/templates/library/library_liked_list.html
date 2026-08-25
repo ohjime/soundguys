@@ -1,0 +1,15 @@
+<c-core-card bgColor="bg-base-100" ringColor="ring-base-300">
+    <div class="flex min-h-80 flex-col gap-4 px-6 py-8">
+        <h2 class="font-serif text-xl font-semibold">Sound Collection</h2>
+        <ul class="flex flex-col gap-2">
+            {% for sound in liked_sounds %}
+            <li class="border-base-300 flex justify-between gap-3 border-b py-2">
+                <span>{{ sound.title }}</span>
+                {% if sound.artist_name %}<span class="text-sm opacity-60">{{ sound.artist_name }}</span>{% endif %}
+            </li>
+            {% empty %}
+            <li class="text-sm opacity-60">No liked sounds yet.</li>
+            {% endfor %}
+        </ul>
+    </div>
+</c-core-card>

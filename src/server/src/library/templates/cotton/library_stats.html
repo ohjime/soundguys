@@ -1,0 +1,30 @@
+<c-vars like_count="?" like_limit="?" saved_count="?" saved_limit="?" />
+<div class="stats bg-base-100 border-base-300 border -mt-4">
+    <div class="stat place-items-start">
+        <div class="stat-title">Sound Collection</div>
+        <div class="stat-value flex flex-row gap-2">
+            <div class="text-primary/75">{{ like_count }}</div>
+            <div class="text-primary">/</div>
+            <div class="text-primary">{{ like_limit }}</div>
+        </div>
+        <div class="stat-actions">
+            <button type="button" class="btn btn-xs btn-primary" hx-get="{% url 'library:liked_list' %}"
+                hx-trigger="click[!document.getElementById('cancel-swap-button-list')], sound-selector:cancelled"
+                @click.capture="if (window.cancelSoundSelectorBefore($el)) { $event.preventDefault(); $event.stopImmediatePropagation(); }">Manage</button>
+        </div>
+    </div>
+    <div class="stat place-items-end" x-data="{ savedCount: Number('{{ saved_count }}') || 0 }"
+        @mix-saved.window="savedCount += 1" @mix-deleted.window="savedCount = Math.max(0, savedCount - 1)">
+        <div class="stat-title">Saved Cosounds</div>
+        <div class="stat-value flex flex-row gap-2">
+            <div class="text-secondary/75" x-text="savedCount">{{ saved_count }}</div>
+            <div class="text-secondary">/</div>
+            <div class="text-secondary">{{ saved_limit }}</div>
+        </div>
+        <div class="stat-actions">
+            <button type="button" class="btn btn-xs btn-secondary" hx-get="{% url 'library:saved_list' %}"
+                hx-trigger="click[!document.getElementById('cancel-swap-button-list')], sound-selector:cancelled"
+                @click.capture="if (window.cancelSoundSelectorBefore($el)) { $event.preventDefault(); $event.stopImmediatePropagation(); }">Manage</button>
+        </div>
+    </div>
+</div>
