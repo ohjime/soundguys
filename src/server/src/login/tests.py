@@ -65,6 +65,16 @@ class LoginModalTests(SimpleTestCase):
         self.assertIn('hx-swap-oob="outerHTML"', rendered)
         self.assertIn('/media/test-avatar.png', rendered)
 
+    def test_code_form_uses_six_digit_otp_component(self):
+        rendered = render_to_string("login/index.html#code_form")
+
+        self.assertIn('class="otp otp-sm sm:otp-lg otp-neutral"', rendered)
+        self.assertIn('name="code"', rendered)
+        self.assertIn('aria-label="6-digit verification code"', rendered)
+        self.assertIn('maxlength="6"', rendered)
+        self.assertIn('pattern="[0-9]{6}"', rendered)
+        self.assertEqual(rendered.count("<span></span>"), 6)
+
     def test_anonymous_login_closes_the_modal(self):
         request = self.factory.post("/login/anonymous/")
         request.htmx = True

@@ -7,6 +7,17 @@ import { DEFAULT_LOUDNESS_TARGET, SoundscapeMixer } from "./soundscape-mixer.js"
  * ninth voice never reaches the graph however it was asked for.
  */
 export const MAX_LAYERS = 8;
+const LOADING_PROGRESS_SETTLE_MS = 350;
+
+/** Let the radial progress paint 100% before its loading view is dismissed. */
+function settleLoadingProgress() {
+    if (typeof requestAnimationFrame !== "function") return Promise.resolve();
+    return new Promise((resolve) => {
+        requestAnimationFrame(() => {
+            setTimeout(resolve, LOADING_PROGRESS_SETTLE_MS);
+        });
+    });
+}
 
 /**
  * Stand-in cover art, so a layer with no artwork has something to show instead
@@ -25,6 +36,39 @@ function placeholderArtwork(title) {
         + "font-family='Georgia,serif' font-size='190' fill='#ffffff' "
         + `fill-opacity='0.2'>${initial}</text></svg>`;
     return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
+/**
+ * Warm an artwork URL before the reactive layer is replaced. The picker has
+ * usually loaded the thumbnail already, but this also covers searched sounds
+ * and an evicted browser cache. A broken image must not strand the swapping
+ * screen; c-core-image handles that case with its normal fallback behaviour.
+ */
+function preloadArtwork(url) {
+    if (!url || typeof Image === "undefined") return Promise.resolve();
+    return new Promise((resolve) => {
+        const image = new Image();
+        let settled = false;
+        const finish = () => {
+            if (settled) return;
+            settled = true;
+            resolve();
+        };
+        image.onload = finish;
+        image.onerror = finish;
+        image.src = url;
+        if (image.complete) finish();
+    });
+}
+
+/** Give Alpine one painted frame to bind the newly cached artwork. */
+function afterNextPaint() {
+    if (typeof requestAnimationFrame !== "function") {
+        return new Promise((resolve) => queueMicrotask(resolve));
+    }
+    return new Promise((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(resolve));
+    });
 }
 
 function normalizeUiLayer(layer) {
@@ -124,16 +168,18 @@ function emit(name, detail = {}) {
  * @param {object}   [options]
  * @param {boolean}  [options.allowAdd]   may this mix grow at all
  * @param {string}   [options.artistName] stamped onto blank layers made here
+ * @param {Function} [options.settleProgress] waits for the loading-ring finish
  */
 export function createSoundLayersStore(rawLayers, {
     allowAdd = true,
     artistName = "",
+    settleProgress = settleLoadingProgress,
 } = {}) {
     return {
         layers: rawLayers.map(normalizeUiLayer),
         maxLayers: MAX_LAYERS,
         // Whether this mix takes new layers at all, decided once by whoever
-        // mounted the store (c-mixer-player). It sits here rather than on a
+        // mounted the store (c-core-sound-player). It sits here rather than on a
         // card or a deck because there is exactly one mix per page and several
         // components render it: the `+` on the layer indicator reads this, and
         // so does every path that appends, so switching it off closes all of
@@ -148,7 +194,9 @@ export function createSoundLayersStore(rawLayers, {
         currentIndex: 0,
         tracksLoading: true,
         loadedCount: 0,
+        loadingTotal: rawLayers.length,
         swappingLayer: false,
+        swapLoading: false,
         started: false,
         paused: false,
         loadError: "",
@@ -324,6 +372,7 @@ export function createSoundLayersStore(rawLayers, {
             this._teardownEngine();
             this.tracksLoading = true;
             this.loadedCount = 0;
+            this.loadingTotal = this.layers.length;
             this.loadError = "";
             this.started = false;
             this.paused = false;
@@ -340,9 +389,10 @@ export function createSoundLayersStore(rawLayers, {
                         emit("progress", { loaded, total });
                     },
                 });
-                this.tracksLoading = false;
                 this.loadedCount = this.layers.length;
                 this._syncAllAnalysis();
+                await settleProgress();
+                this.tracksLoading = false;
                 emit("ready", { layers: this.layers.length });
             } catch (error) {
                 this.tracksLoading = false;
@@ -521,18 +571,24 @@ export function createSoundLayersStore(rawLayers, {
             layer.mute = Boolean(this.layers[index]?.mute);
             layer.isolated = Boolean(this.layers[index]?.isolated);
             this.swappingLayer = true;
+            this.swapLoading = true;
             this.loadError = "";
             try {
-                await this._engine.replaceLayer(index, layerConfig(layer));
+                await Promise.all([
+                    this._engine.replaceLayer(index, layerConfig(layer)),
+                    preloadArtwork(layer.artwork_url),
+                ]);
                 const [outgoing] = this.layers.splice(index, 1, layer);
                 revokeUnusedUrls(outgoing, layer);
                 this._syncAnalysis(index);
                 emit("replace", { index, layer });
+                await afterNextPaint();
             } catch (error) {
                 this.loadError = error instanceof Error ? error.message : String(error);
                 emit("error", { message: this.loadError });
                 throw error;
             } finally {
+                this.swapLoading = false;
                 this.swappingLayer = false;
             }
         },
@@ -542,6 +598,7 @@ export function createSoundLayersStore(rawLayers, {
             const nextLayers = mix.layers.map(normalizeUiLayer);
             this.tracksLoading = true;
             this.loadedCount = 0;
+            this.loadingTotal = nextLayers.length;
             this.currentIndex = 0;
             this.loadError = "";
             try {
@@ -553,8 +610,14 @@ export function createSoundLayersStore(rawLayers, {
                 this.layers.forEach(revokeLocalUrls);
                 this.layers = nextLayers;
                 this.loadedCount = nextLayers.length;
-                this.tracksLoading = false;
                 this._syncAllAnalysis();
+                await settleProgress();
+                this.tracksLoading = false;
+                // Loading a saved mix is itself a playback gesture. The
+                // AudioContext may still be suspended (or have been suspended
+                // while the replacement files decoded), so replacing the
+                // voices is not enough to make the new mix audible.
+                await this.playAll();
                 emit("mixload", { mix });
             } catch (error) {
                 this.tracksLoading = false;
@@ -573,6 +636,11 @@ export function createSoundLayersStore(rawLayers, {
         },
 
         destroy() {
+            // A replacement tab can initialise before this store object is
+            // overwritten. Clear playback state first so reactive consumers
+            // never mistake the outgoing mix for a newly started one.
+            this.started = false;
+            this.paused = false;
             this._teardownEngine();
             this.layers.forEach(revokeLocalUrls);
         },
@@ -632,7 +700,7 @@ export function makeLocalLayer({ file, artworkFile = null, artistName = "" }) {
  * real once setLayerSource points it at a file or a library sound.
  */
 export function makeDraftLayer({ artistName = "" } = {}) {
-    const title = "Untitled layer";
+    const title = "";
     return {
         sound_id: nextLocalId("draft"),
         sound_file: "",
@@ -642,8 +710,8 @@ export function makeDraftLayer({ artistName = "" } = {}) {
         gain: 50,
         mute: false,
         saved: false,
-        flavor: "",
-        tags: "blank",
+        flavor: "In the begining there was darkness.",
+        tags: "Void",
         is_local: true,
         is_draft: true,
     };

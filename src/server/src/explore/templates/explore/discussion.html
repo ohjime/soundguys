@@ -1,0 +1,12 @@
+{% if update_tab_count %}
+    <span id="explore-comment-count-{{ post.pk }}"
+          hx-swap-oob="outerHTML"
+          class="badge badge-sm">{{ comment_count }}</span>
+{% endif %}
+<c-explore-discussion :post="post"
+                      :comments_page="comments_page"
+                      :comment_body="comment_body"
+                      :comment_errors="comment_errors"
+                      :comment_count="comment_count"
+                      :has_commented="has_commented"
+                      :pagination_items="pagination_items" />

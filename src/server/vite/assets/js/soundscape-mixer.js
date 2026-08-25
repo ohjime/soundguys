@@ -761,7 +761,11 @@ export class SoundscapeMixer extends EventTarget {
             voice.nextA = startAt;
             voice.nextB = startAt + voice.offsetB;
         }
-        this._applyMixState(crossfadeSeconds);
+        if (crossfadeSeconds > 0) {
+            this._fadeInVoices(prepared, startAt, crossfadeSeconds);
+        } else {
+            this._applyMixState(0);
+        }
 
         if (this.started) this._tick();
         this._retireVoices(previous, crossfadeSeconds);
@@ -862,6 +866,31 @@ export class SoundscapeMixer extends EventTarget {
         // master limiter is what catches that, and eight layers summing at unity
         // would have needed it anyway.
         return silenced ? 0 : gainFromSlider(voice.config.level) * voice.loudnessGain;
+    }
+
+    /**
+     * Bring newly scheduled voices up from silence when their audio begins.
+     *
+     * Decoding can leave `startAt` well ahead of `currentTime`. Starting the
+     * ramp immediately would spend part (or all) of the fade before a source
+     * is audible, which makes first playback and loaded mixes sound abrupt.
+     */
+    _fadeInVoices(voices, startAt, rampSeconds = this.crossfadeSeconds) {
+        const now = this.context.currentTime;
+        const begins = Math.max(now, startAt);
+        const duration = Math.max(0, rampSeconds);
+        for (const voice of voices) {
+            const param = voice.gain.gain;
+            const target = this._targetGain(voice);
+            param.cancelScheduledValues(now);
+            param.setValueAtTime(param.value, now);
+            param.setValueAtTime(0, begins);
+            if (duration > 0) {
+                param.linearRampToValueAtTime(target, begins + duration);
+            } else {
+                param.setValueAtTime(target, begins);
+            }
+        }
     }
 
     _applyMixState(rampSeconds = 0.1) {
@@ -988,6 +1017,7 @@ export class SoundscapeMixer extends EventTarget {
                 voice.nextA = startAt;
                 voice.nextB = startAt + voice.offsetB;
             }
+            this._fadeInVoices(this.voices, startAt);
             this._startedAt = startAt;
             this.started = true;
             this._tick();

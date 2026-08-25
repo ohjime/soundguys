@@ -97,14 +97,14 @@ function seededBlankLayer() {
     return {
         sound_id: "draft-1",
         sound_file: "",
-        sound_title: "Untitled layer",
+        sound_title: "",
         sound_artist: "Some Artist",
         artwork_url: "",
         gain: 50,
         mute: false,
         saved: false,
-        flavor: "",
-        tags: "blank",
+        flavor: "In the begining there was darkness.",
+        tags: "Void",
         is_local: true,
         is_draft: true,
     };
@@ -133,6 +133,61 @@ async function startedStore(rawLayers = [seededBlankLayer()], options = {}) {
     return store;
 }
 
+test("destroy clears playback state before a replacement store mounts", async () => {
+    const store = await startedStore();
+    store.started = true;
+    store.paused = true;
+    assert.equal(store.started, true);
+    assert.equal(store.paused, true);
+
+    store.destroy();
+
+    assert.equal(store.started, false);
+    assert.equal(store.paused, false);
+});
+
+test("the loading view waits for its progress ring to finish at 100%", async () => {
+    let releaseProgress;
+    let progressReached;
+    const reachedProgress = new Promise((resolve) => {
+        progressReached = resolve;
+    });
+    const store = createSoundLayersStore([soundLayer()], {
+        settleProgress: () => {
+            progressReached();
+            return new Promise((resolve) => {
+                releaseProgress = resolve;
+            });
+        },
+    });
+
+    const initializing = store.initialize();
+    await reachedProgress;
+
+    assert.equal(store.loadedCount, 1);
+    assert.equal(store.loadingTotal, 1);
+    assert.equal(store.tracksLoading, true, "the 100% ring is still visible");
+
+    releaseProgress();
+    await initializing;
+    assert.equal(store.tracksLoading, false);
+});
+
+test("loading a saved mix starts its replacement layers", async () => {
+    const store = await startedStore();
+    let playCalls = 0;
+    store._engine.play = async () => {
+        playCalls += 1;
+    };
+
+    await store.loadMix({ layers: [soundLayer()] });
+
+    assert.equal(playCalls, 1);
+    assert.equal(store.started, true);
+    assert.equal(store.paused, false);
+    assert.equal(store.layers[0].sound_title, "Rain");
+});
+
 test("a blank layer added in the browser cannot collide with the seeded one", async () => {
     const store = await startedStore();
     await store.addLayer(makeDraftLayer({ artistName: "Some Artist" }));
@@ -143,6 +198,12 @@ test("a blank layer added in the browser cannot collide with the seeded one", as
     // sharing an id is the whole bug: the store grows, the screen does not.
     assert.notEqual(store.layers[0].sound_id, store.layers[1].sound_id);
     assert.equal(store.currentIndex, 1);
+    assert.equal(store.layers[0].sound_title, "");
+    assert.equal(store.layers[1].sound_title, "");
+    assert.equal(store.layers[0].tags, "Void");
+    assert.equal(store.layers[1].tags, "Void");
+    assert.equal(store.layers[0].flavor, "In the begining there was darkness.");
+    assert.equal(store.layers[1].flavor, "In the begining there was darkness.");
 });
 
 test("every browser-made layer gets its own id", async () => {
@@ -216,6 +277,48 @@ test("filling a blank layer puts its controls back", async () => {
     assert.equal(store.layers[0].sound_title, "Rain");
     // The card stops greying a layer by its fader only while it is blank.
     assert.equal(store.grayscaleFor(store.layers[0]), 50);
+});
+
+test("the swapping screen stays up until audio and artwork are ready", async () => {
+    let finishAudio;
+    let finishArtwork;
+    const PreviousImage = globalThis.Image;
+    globalThis.Image = class PendingImage {
+        set src(_value) {
+            this.complete = false;
+            finishArtwork = () => {
+                this.complete = true;
+                this.onload?.();
+            };
+        }
+    };
+
+    try {
+        const store = await startedStore();
+        store._engine.replaceLayer = () => new Promise((resolve) => {
+            finishAudio = resolve;
+        });
+        const replacement = store.replaceLayer(0, soundLayer({
+            artwork_url: "/media/art/rain.jpg",
+        }));
+        await Promise.resolve();
+
+        assert.equal(store.swapLoading, true);
+        assert.equal(store.swappingLayer, true);
+        assert.equal(store.currentIsDraft, true);
+
+        finishAudio();
+        await Promise.resolve();
+        assert.equal(store.swapLoading, true, "artwork is still pending");
+
+        finishArtwork();
+        await replacement;
+        assert.equal(store.swapLoading, false);
+        assert.equal(store.swappingLayer, false);
+        assert.equal(store.currentLayer.sound_title, "Rain");
+    } finally {
+        globalThis.Image = PreviousImage;
+    }
 });
 
 test("a decoded layer comes back knowing its own length", async () => {

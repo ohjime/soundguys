@@ -1,0 +1,86 @@
+<c-vars disabled="" />
+<!--
+`disabled` renders the pill inert. The studio shows it that way: the card keeps
+the library's familiar Keep / Swap controls in their usual place, but every one of
+those actions is driven from the settings pane instead. A disabled button emits
+no click, so the htmx requests below never fire — the attributes can stay.
+
+Keep is off on a blank layer too, wherever the pill is live: it posts
+`currentLayer.sound_id`, and a layer nobody has chosen a sound for has no id to
+post. That guard sits in the else branch of the static attribute rather than
+next to it, because a falsy `:disabled` *removes* the attribute — the two
+together would hand the studio a working Keep button. Swap stays live either
+way: it is how a blank layer stops being blank.
+-->
+<div class="join">
+
+    <button class="btn btn-sm"
+            {% if disabled %}disabled{% else %}:disabled="$store.soundLayers.currentIsDraft"{% endif %}
+            x-show="!$store.soundLayers.swappingLayer"
+            x-cloak
+            hx-post="{% url 'library:keep_sound' %}"
+            hx-swap="none"
+            :hx-vals="JSON.stringify({ sound_id: $store.soundLayers.currentLayer.sound_id })"
+            @layer-saved.window="$store.soundLayers.currentLayer.saved = $event.detail.saved">
+        <span class="swap" :class="{ 'swap-active': $store.soundLayers.currentLayer.saved }">
+            <svg class="swap-on size-6 text-red-500"
+                 xmlns="http://www.w3.org/2000/svg"
+                 viewBox="0 0 24 24"
+                 fill="currentColor">
+                <path d="m11.645 20.91-.007-.003-.022-.012a15.247 15.247 0 0 1-.383-.218 25.18 25.18 0 0 1-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0 1 12 5.052 5.5 5.5 0 0 1 16.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 0 1-4.244 3.17 15.247 15.247 0 0 1-.383.219l-.022.012-.007.004-.003.001a.752.752 0 0 1-.704 0l-.003-.001Z" />
+            </svg>
+
+            <svg class="swap-off size-6 scale-95"
+                 xmlns="http://www.w3.org/2000/svg"
+                 fill="none"
+                 viewBox="0 0 24 24"
+                 stroke-width="2.2"
+                 stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
+            </svg>
+
+        </span>
+        <span class="px-1">Keep</span>
+    </button>
+
+    <button class="btn btn-sm"
+            {% if disabled %}disabled{% endif %}
+            x-show="$store.soundLayers.swappingLayer"
+            x-cloak
+            hx-get="{% url 'library:carousel' %}"
+            hx-swap="none swap:300ms"
+            hx-on:htmx:before-swap="document.querySelectorAll('#card-figure, #card-body').forEach(el => el.classList.add('htmx-swapping'))"
+            @click="$store.soundLayers.swappingLayer = false">
+        <svg xmlns="http://www.w3.org/2000/svg"
+             viewBox="0 0 24 24"
+             fill="currentColor"
+             class="size-5 scale-85">
+            <path fill-rule="evenodd" d="M11.03 3.97a.75.75 0 0 1 0 1.06l-6.22 6.22H21a.75.75 0 0 1 0 1.5H4.81l6.22 6.22a.75.75 0 1 1-1.06 1.06l-7.5-7.5a.75.75 0 0 1 0-1.06l7.5-7.5a.75.75 0 0 1 1.06 0Z" clip-rule="evenodd" />
+        </svg>
+        <span class="px-1">Back</span>
+    </button>
+
+    <button class="btn btn-sm"
+            {% if disabled %}disabled{% endif %}
+            :class="{ 'btn-active btn-disabled': $store.soundLayers.swappingLayer }"
+            hx-get="{% url 'library:swap' %}"
+            hx-swap="none swap:300ms"
+            hx-on:htmx:before-swap="document.querySelectorAll('#card-figure, #card-body').forEach(el => el.classList.add('htmx-swapping'))"
+            hx-on:htmx:after-swap="document.getElementById('sound-search-input')?.focus()"
+            @click="$store.soundLayers.swappingLayer = true">
+        <span class="px-1">Swap</span>
+        <span class="swap swap-rotate size-6 place-items-center"
+              :class="{ 'swap-active': $store.soundLayers.swappingLayer }">
+            <span class="swap-on loading loading-spinner loading-xs"></span>
+            <svg class="swap-off"
+                 xmlns="http://www.w3.org/2000/svg"
+                 height="24px"
+                 viewBox="0 -960 960 960"
+                 width="24px"
+                 fill="currentColor">
+                <path d="m482-200 114-113-114-113-42 42 43 43q-28 1-54.5-9T381-381q-20-20-30.5-46T340-479q0-17 4.5-34t12.5-33l-44-44q-17 25-25 53t-8 57q0 38 15 75t44 66q29 29 65 43.5t74 15.5l-38 38 42 42Zm165-170q17-25 25-53t8-57q0-38-14.5-75.5T622-622q-29-29-65.5-43T482-679l38-39-42-42-114 113 114 113 42-42-44-44q27 0 55 10.5t48 30.5q20 20 30.5 46t10.5 52q0 17-4.5 34T603-414l44 44ZM480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z" />
+            </svg>
+        </span>
+    </button>
+
+</div>

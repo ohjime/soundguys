@@ -1,4 +1,4 @@
-{# djlint:off #}
+<!-- djlint:off -->
 <div x-data="{
         voters: [],
         _tick: null,
@@ -18,7 +18,7 @@
      x-show="voters.length > 0"
      x-transition.opacity.duration.300ms
      class="flex flex-col items-center gap-2 w-full max-w-80">
-{# djlint:on #}
+<!-- djlint:on -->
 <ul class="list w-full">
     <li class="pb-4 px-4 text-xs opacity-60 tracking-wide">Recent Votes at this Location</li>
     <template x-for="v in voters" :key="v.id">

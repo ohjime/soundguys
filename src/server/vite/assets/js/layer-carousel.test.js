@@ -200,6 +200,73 @@ test("the arrows step from wherever the selection currently is", () => {
     assert.equal(store.currentIndex, 1);
 });
 
+test("a save response updates the layer it names even after the carousel moves", () => {
+    const { carousel, store } = mount(3);
+    store.layers.forEach((layer) => { layer.saved = false; });
+    store.currentIndex = 2;
+
+    carousel.applySaved({ soundId: "s0", saved: true });
+
+    assert.equal(store.layers[0].saved, true);
+    assert.equal(store.layers[2].saved, false);
+});
+
+test("a save response ignores a sound that is no longer in the carousel", () => {
+    const { carousel, store } = mount(2);
+    store.layers.forEach((layer) => { layer.saved = false; });
+
+    carousel.applySaved({ soundId: "gone", saved: true });
+
+    assert.deepEqual(store.layers.map((layer) => layer.saved), [false, false]);
+});
+
+test("the trash control removes the current layer and selects its neighbour", async () => {
+    const { carousel, store, flush } = mount(3);
+    store.allowAdd = true;
+    store.currentIndex = 1;
+    store.removeLayer = (index) => {
+        store.layers.splice(index, 1);
+        if (store.currentIndex >= index) {
+            store.currentIndex = Math.max(0, store.currentIndex - 1);
+        }
+    };
+
+    await carousel.removeCurrent();
+    flush();
+
+    assert.deepEqual(store.layers.map((layer) => layer.sound_id), ["s0", "s2"]);
+    assert.equal(store.currentIndex, 0);
+});
+
+test("the trash control cannot edit a mix with layer addition disabled", async () => {
+    const { carousel, store } = mount(2);
+    store.allowAdd = false;
+    store.removeLayer = () => assert.fail("a read-only mix must not remove a layer");
+
+    await carousel.removeCurrent();
+
+    assert.deepEqual(store.layers.map((layer) => layer.sound_id), ["s0", "s1"]);
+});
+
+test("removing the final editable layer leaves a fresh blank slot", async () => {
+    const { carousel, store, el, flush } = mount(1);
+    store.allowAdd = true;
+    store.removeLayer = (index) => {
+        store.layers.splice(index, 1);
+        store.currentIndex = 0;
+    };
+    store.addBlankLayer = async () => {
+        store.layers.push({ sound_id: "blank", isDraft: true });
+        el.addItem();
+    };
+
+    await carousel.removeCurrent();
+    flush();
+
+    assert.equal(store.layers.length, 1);
+    assert.equal(store.layers[0].isDraft, true);
+});
+
 test("the carousel opens on the layer the store is already holding", () => {
     const { carousel, store, el } = mount(5);
     store.currentIndex = 3;

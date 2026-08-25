@@ -1,41 +1,53 @@
 <c-vars id="" showExit="true" bgColor="bg-green-900", ringColor="ring-base-content" />
+<!-- djlint:off -->
 <div {% if id %}id="{{ id }}"{% endif %}
-    {# djlint:off #}
-     x-data="{
-         mounted: false,
-         removing: false,
-         depth: 0,
-     }"
-     x-init="
-         requestAnimationFrame(() =>
-             requestAnimationFrame(() => mounted = true)
-         )
-     "
-     @card:remove="removing = true; setTimeout(() => $el.remove(), exitMs + exitDelayMs + 50)"
-     x-effect="
-         cardCount;
-         const siblings = Array.from($el.parentElement?.children || []).filter(el => el.hasAttribute('data-core-card'));
-         depth = siblings.length - siblings.indexOf($el) - 1;
-     "
-     :style="`
-         transition-property: transform, opacity;
-         transition-timing-function: ease-out;
-         transition-duration: ${removing ? exitMs : enterMs}ms;
-         transition-delay: ${removing ? exitDelayMs : enterDelayMs}ms;
-         transform: translateY(${mounted && !removing
-             ? -depth * depthTranslateY + 'px'
-             : removing
-                 ? exitToY + 'px'
-                 : enterFromY + 'px'}) scale(${mounted && !removing
-             ? Math.max(0.75, 1 - depth * depthScale)
-             : removing
-                 ? exitToScale
-                 : enterFromScale});
-         opacity: ${mounted && !removing ? 1 : 0};
-    `"{# djlint:on #}
-    data-core-card
-    style="opacity: 0"
-    class="card {{ bgColor }} ring-8 {{ ringColor }} shadow-2xl shadow-base-content/30 transition-all ease-out z-0 col-start-1 row-start-1 w-full rounded-b-4xl pb-2 flex flex-col rounded-t-3xl relative overflow-hidden">
+         x-data="{
+             mounted: false,
+             removing: false,
+             depth: 0,
+         }"
+         x-init="
+             requestAnimationFrame(() =>
+                 requestAnimationFrame(() => mounted = true)
+             )
+         "
+         @card:remove="
+             removing = true;
+             setTimeout(() => {
+                 const deck = $el.parentElement;
+                 const card = $el;
+                 card.remove();
+                 deck?.dispatchEvent(new CustomEvent('card:removed', {
+                     bubbles: true,
+                     detail: { card },
+                 }));
+             }, exitMs + exitDelayMs + 50);
+         "
+         x-effect="
+             cardCount;
+             const siblings = Array.from($el.parentElement?.children || []).filter(el => el.hasAttribute('data-core-card'));
+             depth = siblings.length - siblings.indexOf($el) - 1;
+         "
+         :style="`
+             transition-property: transform, opacity;
+             transition-timing-function: ease-out;
+             transition-duration: ${removing ? exitMs : enterMs}ms;
+             transition-delay: ${removing ? exitDelayMs : enterDelayMs}ms;
+             transform: translateY(${mounted && !removing
+                 ? -depth * depthTranslateY + 'px'
+                 : removing
+                     ? exitToY + 'px'
+                     : enterFromY + 'px'}) scale(${mounted && !removing
+                 ? Math.max(0.75, 1 - depth * depthScale)
+                 : removing
+                     ? exitToScale
+                     : enterFromScale});
+             opacity: ${mounted && !removing ? 1 : 0};
+        `"
+        data-core-card
+        style="opacity: 0"
+        class="card {{ bgColor }} ring-8 {{ ringColor }} shadow-2xl shadow-base-content/30 transition-all ease-out z-0 col-start-1 row-start-1 w-full rounded-b-4xl pb-2 flex flex-col rounded-t-3xl relative overflow-hidden">
+    <!-- djlint:on -->
     {% if showExit == "true" %}
         <button class="absolute top-3 right-3 btn btn-sm btn-circle btn-ghost"
                 @click="$dispatch('card:remove')">

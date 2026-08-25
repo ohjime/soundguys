@@ -67,15 +67,15 @@ something to fill in rather than an empty canvas.
     <c-studio-builder artist_name="{{ artist.name }}" :sounds="seed_layers" />
 {% endpartialdef %}
 
-<!-- The panels the library picker swaps into the card, mirroring the mixer's
+<!-- The panels the library picker swaps into the card, mirroring the library's
      swap_view: both regions are replaced out-of-band in one response. -->
 {% partialdef library_view %}
-    <c-mixer-card-figure hx-swap-oob="outerHTML">
+    <c-core-sound-card-figure hx-swap-oob="outerHTML">
         <c-studio-library-list :sounds="sounds" />
-    </c-mixer-card-figure>
-    <c-mixer-card-body hx-swap-oob="outerHTML">
+    </c-core-sound-card-figure>
+    <c-core-sound-card-body hx-swap-oob="outerHTML">
         <c-studio-library-search count="{{ collection_size }}" />
-    </c-mixer-card-body>
+    </c-core-sound-card-body>
 {% endpartialdef %}
 
 {% partialdef library_list_items %}
@@ -84,14 +84,14 @@ something to fill in rather than an empty canvas.
 
 <!-- Closing the picker: put the carousel and the flavor panel back. -->
 {% partialdef default_view %}
-    <c-mixer-card-figure hx-swap-oob="outerHTML">
+    <c-core-sound-card-figure hx-swap-oob="outerHTML">
         <template x-if="!$store.soundLayers.isEmpty">
-            <c-mixer-layer-carousel />
+            <c-core-sound-carousel />
         </template>
-    </c-mixer-card-figure>
-    <c-mixer-card-body hx-swap-oob="outerHTML">
+    </c-core-sound-card-figure>
+    <c-core-sound-card-body hx-swap-oob="outerHTML">
         <c-studio-layer-details />
-    </c-mixer-card-body>
+    </c-core-sound-card-body>
 {% endpartialdef %}
 
 <!--
@@ -135,9 +135,9 @@ Signed in, but no Artist profile is attached to this account.
 
 <!--
 Login landed: re-render the stage (now the builder) and refresh the chip. The
-chip renders as #user-details wherever the hosting page shows one (the home
-page's below-deck section does); when no chip is on the page the OOB swap is
-simply dropped.
+chip renders as #user-details wherever the hosting page shows one (the vote
+page does); when no chip is on the page — as on the home page's LIBRARY tab —
+the OOB swap is simply dropped.
 -->
 {% partialdef post_login %}
     <div id="studio-stage" hx-swap-oob="outerHTML" class="flex w-full flex-col items-center">

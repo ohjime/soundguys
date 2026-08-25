@@ -1,0 +1,7 @@
+@font-face {
+    font-family: "Sofia";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("./sofia-latin.woff2") format("woff2");
+}

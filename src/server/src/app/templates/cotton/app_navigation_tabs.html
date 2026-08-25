@@ -6,37 +6,41 @@ fragment into `target` (app/home.html's #tab_content) on change — a radio only
 fires change when it becomes checked, so re-clicking the active tab fetches
 nothing.
 
-LISTEN and DESIGNER each return the same preserved mixer workspace. In its
-normal card view HTMX moves that live element between their layouts, retaining
-the mix and audio. A picker is transient and surface-specific, so changing tabs
-while one is open removes the old workspace id: the incoming tab then mounts a
-clean card rather than preserving the wrong picker.
+Each response replaces #tab_content directly. Tab changes have no content-level
+transition or delayed swap.
 -->
 <!-- Explicit widths and a single flex row avoid daisyUI's radio-tab sizing bug
      in iOS WebKit. -->
-<div class="tabs tabs-lift flex-nowrap">
+<div class="tabs tabs-lift flex-nowrap" role="radiogroup" aria-label="Home sections">
     <input type="radio"
+           id="home-tab-about"
            name="home_tabs"
            class="tab w-auto"
-           aria-label="ABOUT US"
+           aria-label="ABOUT"
+           aria-controls="tab_content"
            hx-get="{% url 'app:home_tab_about' %}"
            hx-target="{{ target }}"
+           hx-sync="{{ target }}:replace"
            hx-swap="innerHTML" />
     <input type="radio"
+           id="home-tab-explore"
            name="home_tabs"
            class="tab w-auto"
-           aria-label="LISTEN"
+           aria-label="EXPLORE"
+           aria-controls="tab_content"
            checked="checked"
-           @change="window.CosoundSoundscape?.prepareWorkspaceTransfer()"
-           hx-get="{% url 'app:home_tab_mixer' %}"
+           hx-get="{% url 'explore:index' %}"
            hx-target="{{ target }}"
+           hx-sync="{{ target }}:replace"
            hx-swap="innerHTML" />
     <input type="radio"
+           id="home-tab-library"
            name="home_tabs"
            class="tab w-auto"
-           aria-label="DESIGNER"
-           @change="window.CosoundSoundscape?.prepareWorkspaceTransfer()"
-           hx-get="{% url 'studio:initial' %}"
+           aria-label="LIBRARY"
+           aria-controls="tab_content"
+           hx-get="{% url 'app:home_tab_library' %}"
            hx-target="{{ target }}"
+           hx-sync="{{ target }}:replace"
            hx-swap="innerHTML" />
 </div>

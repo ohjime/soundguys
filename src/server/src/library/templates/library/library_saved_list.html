@@ -1,0 +1,54 @@
+<c-core-card bgColor="bg-base-100" ringColor="ring-base-300">
+    {{ saved_mixes|json_script:saved_mix_data_id }}
+    <!-- djlint:off -->
+        <div
+             x-data="{
+                 mixes: JSON.parse(document.getElementById('{{ saved_mix_data_id }}').textContent),
+                 closeThenLoad(event, mix) {
+                     const card = event.currentTarget.closest('[data-core-card]');
+                     const deck = card?.parentElement;
+                     if (!card || !deck) return;
+                     if (card.dataset.loadingMix === 'true') return;
+                     card.dataset.loadingMix = 'true';
+
+                     const loadAfterRemoval = (removedEvent) => {
+                         if (removedEvent.detail?.card !== card) return;
+                         deck.removeEventListener('card:removed', loadAfterRemoval);
+                         Alpine.store('soundLayers')?.loadMix(mix);
+                     };
+
+                     deck.addEventListener('card:removed', loadAfterRemoval);
+                     card.dispatchEvent(new CustomEvent('card:remove', { bubbles: true }));
+                 },
+             }"
+             @mix-deleted.window="mixes = mixes.filter(mix => mix.id !== Number($event.detail.mixId))"
+             class="flex min-h-80 flex-col gap-4 px-6 py-8">
+    <!-- djlint:on -->
+    <h2 class="font-serif text-xl font-semibold">Saved Cosounds</h2>
+    <ul class="flex flex-col gap-2">
+        <li x-show="mixes.length === 0" x-cloak class="text-sm opacity-60">No saved cosounds yet.</li>
+        {% for mix in saved_mixes %}
+            <li class="border-base-300 flex items-center gap-2 border-b px-2 py-2">
+                <button type="button"
+                        class="hover:bg-base-200 flex min-w-0 flex-1 flex-col items-start rounded-lg px-2 py-2 text-left transition-colors"
+                        @click="closeThenLoad($event, mixes.find(mix => mix.id === {{ mix.id }}))">
+                    <span class="w-full truncate">{{ mix.title|default:"Untitled cosound" }}</span>
+                    <span class="text-xs opacity-60">{{ mix.layers|length }} layers</span>
+                </button>
+                <button type="button"
+                        class="btn btn-square btn-sm btn-error btn-soft shrink-0"
+                        aria-label="Delete {{ mix.title|default:'Untitled cosound' }}"
+                        title="Delete saved Cosound"
+                        hx-post="{% url 'library:delete_mix' mix.id %}"
+                        hx-target="closest li"
+                        hx-swap="delete"
+                        hx-confirm="Delete this saved Cosound?">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="currentColor" class="size-5">
+                        <path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z" />
+                    </svg>
+                </button>
+            </li>
+        {% endfor %}
+    </ul>
+</div>
+</c-core-card>

@@ -1,0 +1,17 @@
+<!--
+The picker leaves as soon as a replacement is chosen, but decoding its audio
+and warming its artwork can take several seconds. x-if makes this a genuinely
+temporary screen: after both assets are ready the store removes it from the DOM
+rather than leaving a transparent layer over the library.
+-->
+<template x-if="$store.soundLayers.swapLoading">
+    <div role="status"
+         aria-live="polite"
+         class="absolute inset-0 z-60 flex flex-col items-center justify-center gap-4 bg-neutral-950/95 px-8 text-center text-white backdrop-blur-sm">
+        <span class="loading loading-spinner loading-lg text-amber-400"></span>
+        <div>
+            <p class="font-serif text-xl italic">Adding Track</p>
+            <p class="mt-1 text-xs tracking-wide text-white/65">Loading audio and artwork</p>
+        </div>
+    </div>
+</template>

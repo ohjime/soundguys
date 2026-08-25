@@ -166,8 +166,7 @@ def get_random_avatar_url(seed):
     colors = ["b6e3f4", "c0aede", "ffdfbf"]
     color = colors[int(seed) % len(colors)]
     return (
-        f"https://api.dicebear.com/9.x/micah/svg?seed={seed}"
-        f"&backgroundColor={color}&scale=110&translateY=-7"
+        f"https://api.dicebear.com/10.x/line-face/svg?backgroundColor={color}&seed={seed}"
     )
 
 

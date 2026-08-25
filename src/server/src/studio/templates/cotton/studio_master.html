@@ -1,7 +1,7 @@
 <!--
 The transport under the card: master level, play/pause, and save.
 
-Save posts to the mixer's own endpoint — a studio mix and a listener's mix are
+Save posts to the library's own endpoint — a studio mix and a listener's mix are
 the same thing on the server, a list of sound ids and gains. That is also the
 reason it can be off: `canSave` is false while the mix holds a blank layer or a
 track from the artist's machine, because neither has a Sound row to point at.
@@ -32,7 +32,7 @@ the card stays clean.
                 :disabled="!$store.soundLayers?.canSave"
                 :title="$store.soundLayers?.canSave ? 'Save this mix' : $store.soundLayers?.saveBlockedReason"
                 aria-label="Save this mix"
-                hx-post="{% url 'mixer:save' %}"
+                hx-post="{% url 'library:save' %}"
                 hx-trigger="click[!document.getElementById('login-card')]"
                 hx-swap="none"
                 hx-vals='js:{ layers: JSON.stringify(Alpine.store("soundLayers").layers.map(l => ({ sound_id: l.sound_id, sound_gain: Alpine.store("soundLayers").isSilenced(l) ? 0 : l.gain / 100 }))) }'>

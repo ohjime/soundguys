@@ -1,11 +1,83 @@
 {
+  "assets/fonts/caveat/caveat-latin-variable.woff2": {
+    "file": "vite/caveat-latin-variable-CP6HlsNg.woff2",
+    "src": "assets/fonts/caveat/caveat-latin-variable.woff2"
+  },
+  "assets/fonts/courgette/courgette-latin.woff2": {
+    "file": "vite/courgette-latin-KYEPMnl-.woff2",
+    "src": "assets/fonts/courgette/courgette-latin.woff2"
+  },
+  "assets/fonts/dancing-script/dancing-script-latin-variable.woff2": {
+    "file": "vite/dancing-script-latin-variable-BbISTpl1.woff2",
+    "src": "assets/fonts/dancing-script/dancing-script-latin-variable.woff2"
+  },
+  "assets/fonts/jacquarda-bastarda-9/jacquarda-bastarda-9-latin.woff2": {
+    "file": "vite/jacquarda-bastarda-9-latin-38AP0LrB.woff2",
+    "src": "assets/fonts/jacquarda-bastarda-9/jacquarda-bastarda-9-latin.woff2"
+  },
+  "assets/fonts/marcellus/marcellus-latin.woff2": {
+    "file": "vite/marcellus-latin-PfqeU9xk.woff2",
+    "src": "assets/fonts/marcellus/marcellus-latin.woff2"
+  },
+  "assets/fonts/merienda/merienda-latin-variable.woff2": {
+    "file": "vite/merienda-latin-variable-Bg-oVgok.woff2",
+    "src": "assets/fonts/merienda/merienda-latin-variable.woff2"
+  },
+  "assets/fonts/newsreader/newsreader-latin-variable-italic.woff2": {
+    "file": "vite/newsreader-latin-variable-italic-DSgQPFUB.woff2",
+    "src": "assets/fonts/newsreader/newsreader-latin-variable-italic.woff2"
+  },
+  "assets/fonts/newsreader/newsreader-latin-variable.woff2": {
+    "file": "vite/newsreader-latin-variable-DBQoWVJ5.woff2",
+    "src": "assets/fonts/newsreader/newsreader-latin-variable.woff2"
+  },
+  "assets/fonts/nothing-you-could-do/nothing-you-could-do-latin.woff2": {
+    "file": "vite/nothing-you-could-do-latin-CP1q4nxN.woff2",
+    "src": "assets/fonts/nothing-you-could-do/nothing-you-could-do-latin.woff2"
+  },
+  "assets/fonts/parisienne/parisienne-latin.woff2": {
+    "file": "vite/parisienne-latin-CbT3YVsa.woff2",
+    "src": "assets/fonts/parisienne/parisienne-latin.woff2"
+  },
+  "assets/fonts/poiret-one/poiret-one-latin.woff2": {
+    "file": "vite/poiret-one-latin-XvEfraeX.woff2",
+    "src": "assets/fonts/poiret-one/poiret-one-latin.woff2"
+  },
+  "assets/fonts/questrial/questrial-latin.woff2": {
+    "file": "vite/questrial-latin-DVdIsfJD.woff2",
+    "src": "assets/fonts/questrial/questrial-latin.woff2"
+  },
+  "assets/fonts/reenie-beanie/reenie-beanie-latin.woff2": {
+    "file": "vite/reenie-beanie-latin-DJual0st.woff2",
+    "src": "assets/fonts/reenie-beanie/reenie-beanie-latin.woff2"
+  },
+  "assets/fonts/sofia/sofia-latin.woff2": {
+    "file": "vite/sofia-latin-DHOtmhJO.woff2",
+    "src": "assets/fonts/sofia/sofia-latin.woff2"
+  },
   "assets/js/main.js": {
-    "file": "vite/test-DstR_NDi.js",
+    "file": "vite/test-CfrVgRdh.js",
     "name": "test",
     "src": "assets/js/main.js",
     "isEntry": true,
     "css": [
-      "vite/test-5laYxAyo.css"
+      "vite/test-DBaV8JP6.css"
+    ],
+    "assets": [
+      "vite/caveat-latin-variable-CP6HlsNg.woff2",
+      "vite/courgette-latin-KYEPMnl-.woff2",
+      "vite/dancing-script-latin-variable-BbISTpl1.woff2",
+      "vite/jacquarda-bastarda-9-latin-38AP0LrB.woff2",
+      "vite/marcellus-latin-PfqeU9xk.woff2",
+      "vite/merienda-latin-variable-Bg-oVgok.woff2",
+      "vite/newsreader-latin-variable-DBQoWVJ5.woff2",
+      "vite/newsreader-latin-variable-italic-DSgQPFUB.woff2",
+      "vite/nothing-you-could-do-latin-CP1q4nxN.woff2",
+      "vite/parisienne-latin-CbT3YVsa.woff2",
+      "vite/poiret-one-latin-XvEfraeX.woff2",
+      "vite/questrial-latin-DVdIsfJD.woff2",
+      "vite/reenie-beanie-latin-DJual0st.woff2",
+      "vite/sofia-latin-DHOtmhJO.woff2"
     ]
   }
 }

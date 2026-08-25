@@ -1,10 +1,14 @@
 @import url('https://fonts.cdnfonts.com/css/helvetica-neue-5');
 @import "tailwindcss";
 
+.explore-font {
+    font-family: var(--explore-font-family, var(--font-sans));
+}
+
 @source "../../../src";
 @source "..";
 
-/* 1. Initialize DaisyUI */
+/* 1. Initialize DaisyUI (including the OTP component used by login) */
 @plugin "daisyui" {
     /* We just list the themes we want to use here, but we define defaults below */
     themes: winter, dim;
@@ -45,4 +49,122 @@
 
 @utility no-scrollbar {
     @apply [scrollbar-width:none] [&::-webkit-scrollbar]:hidden;
+}
+
+/* Dark-space artwork for a layer that has not been given a sound yet. */
+.empty-layer-galaxy {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    isolation: isolate;
+    background:
+        radial-gradient(circle at 50% 50%, #000 0 7%, #050817 10%, transparent 24%),
+        radial-gradient(circle at 50% 46%, #14163d 0, #070817 42%, #010207 78%);
+}
+
+.empty-layer-galaxy::before {
+    position: absolute;
+    inset: -20%;
+    content: "";
+    opacity: 0.72;
+    background-image:
+        radial-gradient(circle, #fff 0 1px, transparent 1.4px),
+        radial-gradient(circle, #9ed8ff 0 1px, transparent 1.5px),
+        radial-gradient(circle, #c6b7ff 0 0.8px, transparent 1.3px);
+    background-position: 4px 9px, 21px 35px, 44px 17px;
+    background-size: 53px 59px, 71px 67px, 89px 83px;
+    animation: empty-layer-stars 32s linear infinite;
+}
+
+.empty-layer-galaxy::after {
+    position: absolute;
+    inset: -42%;
+    border-radius: 50%;
+    content: "";
+    opacity: 0.9;
+    background:
+        repeating-radial-gradient(ellipse at center, transparent 0 7%, rgba(118, 93, 255, 0.18) 8%, transparent 11%),
+        repeating-conic-gradient(from 18deg, transparent 0 9deg, rgba(42, 117, 255, 0.08) 12deg, rgba(151, 77, 255, 0.42) 17deg, rgba(51, 199, 255, 0.12) 22deg, transparent 31deg);
+    filter: blur(5px) saturate(1.35);
+    -webkit-mask-image: radial-gradient(circle, transparent 0 5%, #000 13% 69%, transparent 83%);
+    mask-image: radial-gradient(circle, transparent 0 5%, #000 13% 69%, transparent 83%);
+    animation: empty-layer-vortex 18s linear infinite;
+}
+
+.empty-layer-galaxy__sludge {
+    position: absolute;
+    inset: -28%;
+    border-radius: 46% 54% 52% 48%;
+    opacity: 0.66;
+    background: repeating-conic-gradient(from 32deg, transparent 0 17deg, rgba(44, 103, 255, 0.08) 20deg, rgba(143, 72, 255, 0.4) 26deg, rgba(64, 211, 255, 0.18) 31deg, transparent 43deg);
+    filter: blur(14px) saturate(1.5);
+    mix-blend-mode: screen;
+    -webkit-mask-image: radial-gradient(circle, transparent 0 35%, #000 46% 71%, transparent 84%);
+    mask-image: radial-gradient(circle, transparent 0 35%, #000 46% 71%, transparent 84%);
+    animation: empty-layer-sludge 29s linear infinite;
+    will-change: transform;
+}
+
+.empty-layer-galaxy__disc {
+    position: absolute;
+    inset: -18%;
+    border-radius: 50%;
+    opacity: 0.7;
+    background: repeating-conic-gradient(from 205deg, transparent 0 15deg, rgba(74, 222, 255, 0.2) 19deg, rgba(116, 64, 255, 0.3) 23deg, transparent 33deg);
+    filter: blur(12px);
+    mix-blend-mode: screen;
+    -webkit-mask-image: radial-gradient(circle, transparent 0 10%, #000 20% 58%, transparent 76%);
+    mask-image: radial-gradient(circle, transparent 0 10%, #000 20% 58%, transparent 76%);
+    animation: empty-layer-disc 10.5s linear infinite;
+    will-change: transform;
+}
+
+.empty-layer-galaxy__core {
+    position: absolute;
+    top: calc(50% - 1.65rem);
+    left: 50%;
+    width: 17%;
+    aspect-ratio: 1;
+    border: 1px solid rgba(153, 220, 255, 0.35);
+    border-radius: 50%;
+    background: #000;
+    box-shadow:
+        0 0 12px 4px rgba(36, 156, 255, 0.26),
+        0 0 34px 12px rgba(113, 59, 255, 0.22),
+        inset 0 0 10px #000;
+    transform: translate(-50%, -50%);
+}
+
+@keyframes empty-layer-vortex {
+    from { transform: rotate(0deg) scaleY(0.72); }
+    to { transform: rotate(360deg) scaleY(0.72); }
+}
+
+@keyframes empty-layer-disc {
+    from { transform: rotate(0deg) scaleY(0.62); }
+    to { transform: rotate(360deg) scaleY(0.62); }
+}
+
+/* The outer material falls behind, stretches, then catches the inner disc. */
+@keyframes empty-layer-sludge {
+    0% { transform: rotate(0deg) scaleY(0.7) skewX(0deg); }
+    22% { transform: rotate(58deg) scaleY(0.64) skewX(4deg); }
+    48% { transform: rotate(154deg) scaleY(0.73) skewX(-3deg); }
+    72% { transform: rotate(245deg) scaleY(0.66) skewX(5deg); }
+    88% { transform: rotate(330deg) scaleY(0.72) skewX(-2deg); }
+    100% { transform: rotate(360deg) scaleY(0.7) skewX(0deg); }
+}
+
+@keyframes empty-layer-stars {
+    from { transform: rotate(0deg) scale(1); }
+    to { transform: rotate(360deg) scale(1.12); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .empty-layer-galaxy::before,
+    .empty-layer-galaxy::after,
+    .empty-layer-galaxy__sludge,
+    .empty-layer-galaxy__disc {
+        animation: none;
+    }
 }

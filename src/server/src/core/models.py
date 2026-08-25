@@ -148,6 +148,40 @@ class Cosound(DjangoDB.Model):
     def layering(self) -> List["SoundLayer"]:
         return list(self.soundlayer_set.select_related("sound").all())
 
+    def as_layers(self, user=None):
+        """This mix in the shape c-core-sound-player hands to the browser.
+
+        The same dict shape library.utils.get_random_sounds builds, so any
+        surface that renders the shared soundscape card can mount a stored
+        cosound the way the library mounts a random one.
+
+        `user` decides only whether each layer opens with a filled heart —
+        pass the request's user wherever the card is rendered for someone, or
+        leave it off and every layer reads as uncollected.
+        """
+        saved_ids = set()
+        if user is not None and user.is_authenticated:
+            listener = Listener.objects.filter(user=user).first()
+            if listener is not None:
+                saved_ids = set(listener.collection.values_list("id", flat=True))
+
+        layers = self.soundlayer_set.select_related("sound__artist").prefetch_related(
+            "sound__tags"
+        )
+        return [
+            {
+                **layer.sound.asLayer(with_gain=float(layer.gain)),
+                "artwork_url": layer.sound.art.url if layer.sound.art else "",
+                # A stored mix already carries a muted layer as gain 0, so
+                # nothing here starts muted — the fader shows where it sits.
+                "mute": False,
+                "saved": layer.sound.pk in saved_ids,
+                "flavor": layer.sound.flavor or "",
+                "tags": " / ".join(layer.sound.tags.names()) or "Unknown",
+            }
+            for layer in layers
+        ]
+
     def __str__(self):
         layers = []
         for layer in self.soundlayer_set.all():  # type: ignore

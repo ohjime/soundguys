@@ -20,49 +20,36 @@
                 <div class="flex flex-col gap-1.5 pb-6 items-center justify-center w-full">
                     <c-app-navigation-tabs />
                 </div>
-                <!-- The tab-controlled body: each c-app-navigation-tabs radio
-                     swaps this region's contents. Opens on the mixer. -->
-                <div id="tab_content" class="flex flex-col items-center gap-10 w-full">{% include "app/home.html#tab_mixer" %}</div>
-            </div>
-        </div>
-        <!-- Below-deck content — each section animates its own height in/out via grid-rows trick -->
-        <div class="w-full flex flex-col items-center">
-            <div x-data
-                 class="grid w-full transition-[grid-template-rows,opacity] duration-500 ease-out"
-                 :class="$store.soundLayers.started ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'">
-                <div class="overflow-hidden flex flex-col items-center pt-6 pb-2"
-                     :class="$store.soundLayers.started && 'motion-opacity-in-0 motion-translate-y-in-100 motion-delay-200 motion-duration-500 motion-blur-in-md'">
-                    <c-core-user-details />
-                </div>
-            </div>
-            <div x-data
-                 class="grid w-full transition-[grid-template-rows,opacity] duration-500 ease-out"
-                 :class="$store.soundLayers.started ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'">
-                <div class="overflow-hidden flex flex-col items-center gap-3 pt-6"
-                     :class="$store.soundLayers.started && 'motion-opacity-in-0 motion-translate-y-in-100 motion-delay-300 motion-blur-in-md motion-duration-500'">
-                    <c-app-saved-mixes :mixes="user_mixes" />
-                </div>
-            </div>
-            <div id="feed"
-                 x-data
-                 class="text-md font-light flex flex-col items-center gap-2 w-full pt-6 empty:pt-0"
-                 :class="$store.soundLayers.started && 'motion-opacity-in-0 motion-translate-y-in-100 motion-blur-in-md'">
+                <div id="tab_content"
+                     role="region"
+                     aria-label="Selected home section"
+                     class="flex w-full flex-col items-center">{% include "app/home.html#tab_explore" %}</div>
             </div>
         </div>
     </div>
 {% endpartialdef %}
+<!-- The EXPLORE tab uses the same fragment as the standalone Explore page. -->
+{% partialdef tab_explore %}
+    {% include "explore/index.html#index" %}
+{% endpartialdef %}
 <!--
-The MIXER tab. The player lives inside the swapped region on purpose: it is
+The LIBRARY tab. The player lives inside the swapped region on purpose: it is
 what mounts the soundLayers store over this tab's mix, so choosing another tab
 unmounts it (the htmx cleanup hook in soundscape-store.js stops the audio) and
-choosing MIXER again mounts a fresh random mix.
+choosing LIBRARY again mounts a fresh empty layer.
 -->
-{% partialdef tab_mixer %}
-    <c-mixer-player :sounds="sounds" />
-    <div>
-        <c-core-deck id="deck">
-            {% include "mixer/index.html#mixer" %}
-        </c-core-deck>
+{% partialdef tab_library %}
+    <div class="flex w-full flex-col items-center gap-10 pt-4">
+        <c-library-stats like_count="{{ liked_sound_count }}"
+                         like_limit="10"
+                         saved_count="{{ saved_mix_count }}"
+                         saved_limit="5" />
+        <c-core-sound-player :sounds="sounds" />
+        <div>
+            <c-core-deck id="deck">
+                {% include "library/index.html#library" %}
+            </c-core-deck>
+        </div>
     </div>
 {% endpartialdef %}
 <!--
@@ -75,7 +62,7 @@ cotton/app_about_article.html.
 {% endpartialdef %}
 {% partialdef mix_title_modal %}
     <h3 class="font-bold text-lg">Name your cosound</h3>
-    <form hx-post="{% url 'mixer:save_confirm' %}"
+    <form hx-post="{% url 'library:save_confirm' %}"
           hx-target="#core_modal_content"
           hx-swap="innerHTML"
           class="flex flex-col gap-4 py-4">

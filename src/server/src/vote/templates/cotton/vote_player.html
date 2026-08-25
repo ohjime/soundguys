@@ -1,8 +1,8 @@
 <c-vars layers />
 <!-- json_script emits the layers list as JSON for the Alpine store -->
 {{ layers|json_script:"voteLayers" }}
+<!-- djlint:off -->
 <div class="contents"
-    {# djlint:off #}
      x-data
      x-init="
         const _voteLayersData = {
@@ -17,6 +17,6 @@
         } else {
             Object.assign(Alpine.store('voteLayers'), _voteLayersData);
         }
-     "
-    {# djlint:on #}>
+     ">
+    <!-- djlint:on -->
 </div>

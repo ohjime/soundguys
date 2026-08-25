@@ -37,6 +37,10 @@ RUN uv sync --frozen --no-dev --no-install-project
 # App source + the assets built in stage 1
 COPY src ./src
 COPY --from=assets /app/vite/static ./vite/static
+# The admin reads these small manifests at runtime to discover article fonts.
+# Keep the source font folders beside the production bundle so its choices
+# match exactly what Vite built in the assets stage.
+COPY --from=assets /app/vite/assets/fonts ./vite/assets/fonts
 RUN uv sync --frozen --no-dev
 
 # Bake static files into the image (WhiteNoise serves them; needs no DB or AWS creds)
