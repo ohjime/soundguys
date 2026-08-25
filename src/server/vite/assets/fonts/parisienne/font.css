@@ -1,0 +1,7 @@
+@font-face {
+    font-family: "Parisienne";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("./parisienne-latin.woff2") format("woff2");
+}

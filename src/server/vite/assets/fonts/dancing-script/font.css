@@ -1,0 +1,7 @@
+@font-face {
+    font-family: "Dancing Script";
+    font-style: normal;
+    font-weight: 400 700;
+    font-display: swap;
+    src: url("./dancing-script-latin-variable.woff2") format("woff2");
+}

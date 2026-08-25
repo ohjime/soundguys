@@ -18,6 +18,7 @@ function fakeParam(value = 0) {
     return {
         value,
         maxValue: 1,
+        events: [],
         // Every value curve scheduled on this param, which is where a loop
         // crossfade shows up: one ramp up and one down per scheduled pass.
         curves: [],
@@ -25,9 +26,11 @@ function fakeParam(value = 0) {
         cancelScheduledValues() {},
         setValueAtTime(next) {
             this.value = next;
+            this.events.push({ type: "set", value: next, when: arguments[1] });
         },
         linearRampToValueAtTime(next) {
             this.value = next;
+            this.events.push({ type: "ramp", value: next, when: arguments[1] });
         },
         setValueCurveAtTime(curve, when, duration) {
             this.curves.push({ curve, when, duration });
@@ -151,6 +154,36 @@ test("uses a cubic perceptual fader curve", () => {
     assert.equal(gainFromSlider(0), 0);
     assert.equal(gainFromSlider(0.5), 0.125);
     assert.equal(gainFromSlider(1), 1);
+});
+
+test("first playback fades in when its scheduled audio begins", async () => {
+    const mixer = stubbedMixer();
+    await mixer.setLayers([{ id: "a", url: "a.wav", level: 1 }]);
+
+    await mixer.play();
+
+    const events = mixer.voices[0].gain.gain.events;
+    mixer.destroy();
+    assert.deepEqual(events.slice(-2), [
+        { type: "set", value: 0, when: 0.08 },
+        { type: "ramp", value: 1, when: 0.08 + mixer.crossfadeSeconds },
+    ]);
+});
+
+test("a loaded mix fades replacement voices from their scheduled start", async () => {
+    const mixer = stubbedMixer();
+    await mixer.setLayers([{ id: "old", url: "old.wav" }]);
+    await mixer.play();
+    mixer.context.currentTime = 0.25;
+
+    await mixer.setLayers([{ id: "new", url: "new.wav", level: 0.5 }]);
+
+    const events = mixer.voices[0].gain.gain.events;
+    mixer.destroy();
+    assert.deepEqual(events.slice(-2), [
+        { type: "set", value: 0, when: 1 },
+        { type: "ramp", value: 0.125, when: 1 + mixer.crossfadeSeconds },
+    ]);
 });
 
 test("addLayer appends a voice and leaves the existing ones in place", async () => {

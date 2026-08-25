@@ -1,0 +1,7 @@
+@font-face {
+    font-family: "Questrial";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("./questrial-latin.woff2") format("woff2");
+}

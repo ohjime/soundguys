@@ -134,7 +134,7 @@ export function studioBuilder({ artistName = "" } = {}) {
          * say why nothing happened when the mix is full.
          *
          * The card's `+` skips the nudge on purpose. It is not reachable until
-         * the mix is playing in the mixer (the loading overlay covers it), and
+         * the mix is playing in the library (the loading overlay covers it), and
          * a blank layer is silent either way, so there is nothing to hear.
          */
         addBlank() {

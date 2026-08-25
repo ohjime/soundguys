@@ -11,7 +11,7 @@ export const JUMP_TIMEOUT_MS = 1500;
  * The artwork carousel: which layer is on screen, and every way of changing it.
  *
  * Registered as the `layerCarousel` Alpine component and handed the name of the
- * store it drives, since the mixer and the studio share this component but not
+ * store it drives, since the library and the studio share this component but not
  * their state:
  *
  *   <div x-data="layerCarousel('soundLayers')"
@@ -122,6 +122,29 @@ export function layerCarousel(storeName) {
 
         move(delta) {
             this.select((this.mix?.currentIndex ?? 0) + delta);
+        },
+
+        /** Apply the server-confirmed collection state to the sound it names. */
+        applySaved(detail) {
+            if (!detail || detail.soundId == null) return;
+            const layer = this.mix?.layers.find(
+                (candidate) => String(candidate.sound_id) === String(detail.soundId),
+            );
+            if (layer) layer.saved = Boolean(detail.saved);
+        },
+
+        /**
+         * Remove the selected layer from an editable mix and settle the
+         * carousel on its new neighbour. An editable mix always keeps one
+         * slot: deleting its final layer replaces it with a blank the user can
+         * fill, rather than leaving a carousel with no route back to adding.
+         */
+        async removeCurrent() {
+            const mix = this.mix;
+            if (!mix?.allowAdd || !mix.layers.length) return;
+            mix.removeLayer(mix.currentIndex);
+            if (!mix.layers.length) await mix.addBlankLayer();
+            if (mix.layers.length) this.select(mix.currentIndex);
         },
 
         slideTo(target) {
