@@ -1,4 +1,28 @@
-<c-vars sounds />
-<ul id="sound-search-results" class="list bg-base-100 overflow-y-auto h-full">
-    <c-library-swap-list-items :sounds="sounds" />
-</ul>
+<c-vars tags />
+<!--
+The picker's frame. The heading and Cancel stay put while the pane below them
+changes, which is why they live here rather than inside the results: the search
+endpoint re-renders the pane on every keystroke, and `cancel-swap-button-list`
+is the handle three other things reach for by id — the escape key in
+c-library-swap-search, the Manage buttons in c-library-stats, and
+sound-selector-guard.js. Swapping it away mid-search would break all three.
+
+`#sound-search-results` keeps its id because the search box targets it. What it
+holds is either the tag buttons the picker opens on, or a list of sounds.
+-->
+<div class="flex h-full flex-col bg-base-100">
+    <div class="p-4 pt-8 pb-2 text-sm opacity-95 font-medium bg-base-300 flex items-center justify-between"
+         x-data>
+        <span x-text="$store.soundLayers.currentIsDraft ? 'Select a Sound' : 'Select Replacement Sound'"></span>
+        <button type="button"
+                id="cancel-swap-button-list"
+                class="btn btn-xs btn-ghost hover:bg-base-200 text-xs font-normal cursor-pointer"
+                hx-get="{% url 'library:carousel' %}"
+                hx-swap="none swap:300ms"
+                hx-on:htmx:before-swap="document.querySelectorAll('#card-figure, #card-body').forEach(el => el.classList.add('htmx-swapping'))"
+                @click="$store.soundLayers.swappingLayer = false">Cancel</button>
+    </div>
+    <div id="sound-search-results" class="min-h-0 flex-1 overflow-y-auto">
+        <c-library-swap-tags :tags="tags" />
+    </div>
+</div>

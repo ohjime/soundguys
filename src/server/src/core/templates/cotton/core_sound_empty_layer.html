@@ -28,7 +28,6 @@ none — so there is no request to guard beyond the button itself.
             hx-swap="none swap:300ms"
             x-init="$nextTick(() => htmx.process($el))"
             hx-on:htmx:before-swap="document.querySelectorAll('#card-figure, #card-body').forEach(el => el.classList.add('htmx-swapping'))"
-            hx-on:htmx:after-swap="document.getElementById('sound-search-input')?.focus()"
             @click="$store.soundLayers.currentIndex = index; $store.soundLayers.swappingLayer = true"
         {% else %}
             disabled

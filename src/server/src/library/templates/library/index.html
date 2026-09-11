@@ -12,7 +12,7 @@
                     </c-core-sound-card-header>
                 </c-core-sound-indicator-dock>
                 <c-core-sound-card-figure>
-                    <c-core-sound-carousel artist_url="{% url 'app:artist_details' %}" swap_url="{% url 'library:swap' %}" />
+                    <c-core-sound-carousel swap_url="{% url 'library:swap' %}" />
                 </c-core-sound-card-figure>
             </div>
             <c-core-sound-arrows />
@@ -38,7 +38,7 @@
 {% endpartialdef %}
 {% partialdef default_view %}
     <c-core-sound-card-figure hx-swap-oob="outerHTML">
-        <c-core-sound-carousel artist_url="{% url 'app:artist_details' %}" swap_url="{% url 'library:swap' %}" />
+        <c-core-sound-carousel swap_url="{% url 'library:swap' %}" />
     </c-core-sound-card-figure>
     <c-core-sound-card-body hx-swap-oob="outerHTML">
         <div class="italic font-serif font-extralight text-[8pt] font-stretch-95%">
@@ -50,12 +50,15 @@
 {% endpartialdef %}
 {% partialdef swap_view %}
     <c-core-sound-card-figure hx-swap-oob="outerHTML">
-        <c-library-swap-list :sounds="sounds" />
+        <c-library-swap-list :tags="tags" />
     </c-core-sound-card-figure>
     <c-core-sound-card-body hx-swap-oob="outerHTML">
-        <c-library-swap-search count="{{ collection_size }}" />
+        <c-library-swap-search count="{{ collection_size }}" :tags="tags" />
     </c-core-sound-card-body>
 {% endpartialdef %}
-{% partialdef swap_list_items %}
-    <c-library-swap-list-items :sounds="sounds" />
+{% partialdef swap_tags %}
+    <c-library-swap-tags :tags="tags" />
+{% endpartialdef %}
+{% partialdef swap_results %}
+    <c-library-swap-results :sounds="sounds" />
 {% endpartialdef %}

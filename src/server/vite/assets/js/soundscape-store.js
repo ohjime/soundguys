@@ -200,6 +200,13 @@ export function createSoundLayersStore(rawLayers, {
         started: false,
         paused: false,
         loadError: "",
+        // The name this mix is currently known by: the title of the saved
+        // Cosound it was loaded from, or the one it was last saved under. It
+        // survives edits on purpose — tweak a loaded Cosound and the save
+        // dialog still opens on its name, so keeping that name overwrites it
+        // and typing a new one keeps both. Empty means this mix has never been
+        // named, and the dialog opens blank.
+        loadedTitle: "",
         _engine: null,
 
         get currentLayer() {
@@ -228,21 +235,25 @@ export function createSoundLayersStore(rawLayers, {
         get currentIsDraft() {
             return Boolean(this.currentLayer?.isDraft);
         },
+        // The layers a save is made of. A blank layer is a slot the artist has
+        // not filled yet, not a part of the mix, so every save decision looks
+        // past it: it neither blocks the button nor goes into the POST. That
+        // makes a mix of nothing but blank layers an empty one.
+        get savableLayers() {
+            return this.layers.filter((layer) => !layer.isDraft);
+        },
         get hasLocalLayers() {
-            return this.layers.some((layer) => layer.isLocal);
+            return this.savableLayers.some((layer) => layer.isLocal);
         },
         // Saving a mix posts sound_ids the server resolves to Sound rows, so a
         // mix holding a browser-local track has nothing to point at. The studio
         // uses this to explain why the save button is off rather than failing
         // the POST.
         get canSave() {
-            return this.layers.length > 0 && !this.hasLocalLayers;
+            return this.savableLayers.length > 0 && !this.hasLocalLayers;
         },
         get saveBlockedReason() {
-            if (this.layers.length === 0) return "Add a layer first.";
-            if (this.layers.some((layer) => layer.isDraft)) {
-                return "Give every blank layer a sound before saving.";
-            }
+            if (this.savableLayers.length === 0) return "Can't save empty Cosound.";
             if (this.hasLocalLayers) {
                 return "Mixes with your own tracks stay on this device.";
             }
@@ -391,6 +402,12 @@ export function createSoundLayersStore(rawLayers, {
                 });
                 this.loadedCount = this.layers.length;
                 this._syncAllAnalysis();
+                // The mix went to the engine as it stood before the files were
+                // fetched. Anything moved while they loaded — a fader, a mute,
+                // an Explore layer link isolating a layer from the writing
+                // below the card — reached a voice that did not exist yet, so
+                // push the layers' own state over the top of what was sent.
+                this._syncAudibility();
                 await settleProgress();
                 this.tracksLoading = false;
                 emit("ready", { layers: this.layers.length });
@@ -537,6 +554,19 @@ export function createSoundLayersStore(rawLayers, {
                 ...source,
                 is_draft: false,
                 isDraft: false,
+                // The new source decides whether the layer is a browser-local
+                // one, the same way it decides the file. A blank layer is
+                // marked local because it has no Sound row either; a library
+                // sound dropped into that slot must not inherit the mark, or
+                // the mix it fills could never be saved.
+                is_local: Boolean(source.is_local ?? source.isLocal),
+                isLocal: Boolean(source.is_local ?? source.isLocal),
+                // The artist's own page belongs to whoever made *this* file,
+                // so it arrives with the source or not at all. Letting it fall
+                // through from the layer being replaced is how a credit ends
+                // up linking to a different artist's site — a local track
+                // dropped over a library sound sends no artist at all.
+                artist_url: source.artist_url ?? "",
                 // A different file is a different length, so the crop the
                 // artist set on the old one points into nothing. The loudness
                 // target survives — it is a preference, not a measurement, and
@@ -609,6 +639,7 @@ export function createSoundLayersStore(rawLayers, {
                 });
                 this.layers.forEach(revokeLocalUrls);
                 this.layers = nextLayers;
+                this.loadedTitle = mix.title || "";
                 this.loadedCount = nextLayers.length;
                 this._syncAllAnalysis();
                 await settleProgress();

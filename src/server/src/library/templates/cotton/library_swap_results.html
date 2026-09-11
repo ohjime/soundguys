@@ -1,0 +1,73 @@
+<c-vars sounds />
+<!--
+The picker's results, swapped into #sound-search-results by the search endpoint.
+The heading and Cancel are not here — they belong to the frame
+(c-library-swap-list) and must survive a keystroke.
+-->
+{{ sounds|json_script:"swapCandidates" }}
+<ul class="list">
+    {% for sound in sounds %}
+        <!-- djlint:off -->
+        <li class="list-row"
+            x-data="{
+                artLoaded: false,
+                revealArt() { requestAnimationFrame(() => requestAnimationFrame(() => { this.artLoaded = true })); },
+                get inMix() { return $store.soundLayers.layers.some(l => l.sound_id === {{ sound.id }}) },
+            }"
+            :class="inMix ? 'opacity-40 pointer-events-none' : 'cursor-pointer hover:bg-base-200'"
+            hx-get="{% url 'library:carousel' %}"
+            hx-swap="none swap:300ms"
+            hx-on:htmx:before-swap="document.querySelectorAll('#card-figure, #card-body').forEach(el => el.classList.add('htmx-swapping'))"
+            @click="(async () => {
+                if (inMix) return;
+                const candidates = JSON.parse(document.getElementById('swapCandidates').textContent);
+                const store = $store.soundLayers;
+                if (store.currentIsDraft && !store.started) await store.playAll();
+                await store.replaceLayer(store.currentIndex, candidates[{{ forloop.counter0 }}]);
+            })()"
+        >
+        <!-- djlint:on -->
+        <!-- The artwork is a remote fetch, so the row reserves its square and
+             shimmers until the bytes arrive rather than reflowing around a
+             half-drawn image, then cross-fades: the skeleton leaves on a
+             transition instead of blinking out, so there is no hard cut under
+             an image that is still arriving. Alpine's leave transition is what
+             finally sets `display: none`, which is also what stops the shimmer
+             animation running forever behind an opaque picture.
+
+             `revealArt` waits two frames rather than flipping the flag where it
+             stands. Alpine initialises before the browser paints, so a cached
+             image — already `complete`, and it never fires `load` — would go
+             straight to opacity 1 with no painted start state to move from, and
+             pop instead of fading. An error settles it the same way: a broken
+             URL should stop the shimmer, not pretend it is still coming. -->
+        <div class="relative size-10 shrink-0 overflow-hidden rounded-lg bg-base-300">
+            <div class="skeleton absolute inset-0"
+                 x-show="!artLoaded"
+                 x-transition:leave="transition-opacity duration-300"
+                 x-transition:leave-start="opacity-100"
+                 x-transition:leave-end="opacity-0"></div>
+            <img class="absolute inset-0 h-full w-full object-cover transition-opacity duration-300"
+                 :class="artLoaded ? 'opacity-100' : 'opacity-0'"
+                 x-init="if ($el.complete) revealArt()"
+                 @load="revealArt()"
+                 @error="revealArt()"
+                 src="{{ sound.artwork_url }}"
+                 alt="{{ sound.title }} artwork"
+                 width="40"
+                 height="40"
+                 loading="lazy"
+                 decoding="async">
+        </div>
+        <div>
+            <div class="text-sm font-semibold">{{ sound.title }}</div>
+            <div class="text-xs font-semibold opacity-60">
+                <span x-text="inMix ? 'Already in mix' : ''">{{ sound.artist_name }}</span>
+                <span x-show="!inMix">{{ sound.artist_name }}</span>
+            </div>
+        </div>
+    </li>
+    {% empty %}
+        <li class="p-4 text-xs opacity-60">No sounds found.</li>
+    {% endfor %}
+</ul>

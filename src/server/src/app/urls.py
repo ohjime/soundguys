@@ -11,7 +11,6 @@ from app.views import (
     home_initial,
     home_tab_library,
     home_tab_about,
-    artist_details,
 )
 
 app_name = "app"
@@ -72,11 +71,6 @@ htmx_urlpatterns = [
         "htmx/home/tab/about",
         home_tab_about,
         name="home_tab_about",
-    ),
-    path(
-        "htmx/artist/details",
-        artist_details,
-        name="artist_details",
     ),
 ]
 

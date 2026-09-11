@@ -84,6 +84,37 @@
     @apply [scrollbar-width:none] [&::-webkit-scrollbar]:hidden;
 }
 
+/*
+ * The sound picker's tag filter (library/cotton/library_swap_search.html).
+ *
+ * daisyUI's `filter` shows every option until one is picked. Sitting above a
+ * search box in a 120px card body, that is a row of a dozen chips repeating the
+ * tag grid already on screen, so the idle state here is the label the row
+ * replaced — "Search Collected Sounds" — and the chips appear only once a tag is
+ * active. daisyUI then leaves exactly one standing, which is the readout this
+ * wants: "× rain".
+ *
+ * The chips are collapsed the way daisyUI collapses its own unselected options —
+ * zero width and opacity, never `display: none`. The tag buttons over the
+ * artwork are <label for> pointing at these radios, and a control that is not
+ * rendered at all is a control a label cannot reliably activate. Zero-sized is
+ * still focusable, which is what the `:focus-visible` arm is for: a keyboard
+ * user tabbing in gets the whole row back, since they cannot reach the grid.
+ */
+.tag-filter:not(:has(:checked:not(.filter-reset))):not(:has(:focus-visible)) .filter input {
+    scale: 0;
+    width: 0;
+    margin-inline: 0;
+    padding-inline: 0;
+    border-width: 0;
+    opacity: 0;
+}
+
+.tag-filter:has(:checked:not(.filter-reset)) .tag-filter-label,
+.tag-filter:has(:focus-visible) .tag-filter-label {
+    display: none;
+}
+
 /* Dark-space artwork for a layer that has not been given a sound yet. */
 .empty-layer-galaxy {
     position: absolute;

@@ -9,7 +9,7 @@ from core.utils import add_card, close_modal, show_modal
 from app.utils import serialize_mix
 from login.views import login_modal
 from library.models import SoundMix
-from library.utils import parse_layers, serialize_sounds
+from library.utils import parse_layers, picker_tag_facets, serialize_sounds
 
 
 def library_save(request):
@@ -18,11 +18,7 @@ def library_save(request):
         return HttpResponse("Request Denied.")
 
     if not request.user.is_authenticated:
-        response = add_card(
-            target_deck="deck",
-            template="login/index.html#card",
-            request=request,
-        )
+        response = login_modal(request)
         response["HX-Trigger"] = "auth-required"
         return response
 
@@ -51,6 +47,10 @@ def library_save(request):
         {
             "layers_json": json.dumps(layer_data),
             "existing_title": existing_title[:255],
+            # Only a mix that is already a row has a time to show. A name
+            # carried in from an edit or an Explore post is a suggestion, not a
+            # record of anything, so the dialog says nothing about when.
+            "existing_saved_at": existing.updated_at if existing else None,
         },
     )
 
@@ -62,29 +62,64 @@ def library_save_confirm(request):
     if not request.user.is_authenticated:
         return HttpResponse("Request Denied.", status=401)
 
-    _, layers = parse_layers(request.POST.get("layers"))
+    layer_data, layers = parse_layers(request.POST.get("layers"))
     if not layers:
         return HttpResponse("No layers provided.", status=400)
 
     title = (request.POST.get("title") or "").strip()
 
     cosound = Cosound.get_or_create_from_layers(layers)
+
+    # A name is how a listener finds a Cosound again, so two of theirs cannot
+    # share one. Re-saving the same layers is not a clash — that is the same
+    # Cosound answering to the same name, and the write below is a rename at
+    # most. A clash is a *different* Cosound under this name: keeping the name
+    # after tweaking a loaded mix, which is the ordinary way to edit one. That
+    # loses the version saved before, so it is asked about before it is done
+    # rather than reported afterwards.
+    clash = (
+        SoundMix.objects.filter(creator=request.user, title__iexact=title)
+        .exclude(cosound=cosound)
+        .first()
+        if title
+        else None
+    )
+    if clash and request.POST.get("overwrite") != "1":
+        return show_modal(
+            request,
+            "app/home.html#mix_overwrite_modal",
+            {
+                "layers_json": json.dumps(layer_data),
+                "title": title,
+                "overwritten_saved_at": clash.updated_at,
+            },
+        )
+
     sound_mix, created = SoundMix.objects.get_or_create(
         creator=request.user, cosound=cosound
     )
     sound_mix.title = title
     sound_mix.save(update_fields=["title", "updated_at"])
 
-    if not created:
-        return close_modal(request)
+    # The confirmed overwrite. The new Cosound has the name now, so the old row
+    # goes; the deck drops its entry on `mix-deleted`, the same event the delete
+    # button fires.
+    overwritten_id = None
+    if clash:
+        overwritten_id = clash.id
+        clash.delete()
+
+    # `mix-titled` is what the mix answers to from here on: the transport hands
+    # this name back to the save dialog next time, so a rename does not leave
+    # the old title waiting in the box.
+    triggers = {"close-modal": True, "mix-titled": {"title": sound_mix.title}}
+    if overwritten_id is not None:
+        triggers["mix-deleted"] = {"mixId": overwritten_id}
+    if created:
+        triggers["mix-saved"] = {"mix": serialize_mix(sound_mix)}
 
     response = close_modal(request)
-    response["HX-Trigger"] = json.dumps(
-        {
-            "close-modal": True,
-            "mix-saved": {"mix": serialize_mix(sound_mix)},
-        }
-    )
+    response["HX-Trigger"] = json.dumps(triggers)
     return response
 
 
@@ -183,40 +218,62 @@ def library_delete_mix(request, mix_id):
 
 
 def library_swap(request):
+    """Open the sound picker over the card.
+
+    It opens on tags rather than on a handful of sounds. A blank layer is a
+    question about what kind of sound belongs there, and a name for that — Rain,
+    Traffic, Voices — narrows it far faster than scrolling an unfiltered list
+    does. The sounds arrive once the listener has said which kind they want,
+    either by pressing a tag or by typing.
+    """
     if not request.htmx:
         return HttpResponse("Request Denied.")
 
-    qs = Sound.objects.select_related("artist").prefetch_related("tags")
-    collection_size = qs.count()
-    sounds = serialize_sounds(qs.order_by("?")[:5], user=request.user)
     return render(
         request,
         "library/index.html#swap_view",
-        {"sounds": sounds, "collection_size": collection_size},
+        {
+            "tags": picker_tag_facets(request.user),
+            "collection_size": Sound.objects.count(),
+        },
     )
 
 
 def library_search(request):
+    """The picker's results pane, for both ways of narrowing it.
+
+    `tag` is the button the listener pressed (and the radio it checks in the
+    filter above the search box); `q` is what they typed. They compose, so
+    typing inside a tag keeps searching within it. With neither, there is
+    nothing to show a list of — that is the opening state, and the tag buttons
+    come back.
+    """
     if not request.htmx:
         return HttpResponse("Request Denied.")
 
-    qs = Sound.objects.select_related("artist").prefetch_related("tags")
     q = (request.GET.get("q") or "").strip()
-    if q:
-        qs = (
-            qs.filter(
-                Q(title__icontains=q)
-                | Q(artist__name__icontains=q)
-                | Q(tags__name__icontains=q)
-            )
-            .distinct()
-            .order_by("title")[:20]
+    tag = (request.GET.get("tag") or "").strip()
+
+    if not q and not tag:
+        return render(
+            request,
+            "library/index.html#swap_tags",
+            {"tags": picker_tag_facets(request.user)},
         )
-    else:
-        qs = qs.order_by("?")[:5]
+
+    qs = Sound.objects.select_related("artist").prefetch_related("tags")
+    if tag:
+        qs = qs.filter(tags__name=tag)
+    if q:
+        qs = qs.filter(
+            Q(title__icontains=q)
+            | Q(artist__name__icontains=q)
+            | Q(tags__name__icontains=q)
+        )
+    qs = qs.distinct().order_by("title")[:20]
     return render(
         request,
-        "library/index.html#swap_list_items",
+        "library/index.html#swap_results",
         {"sounds": serialize_sounds(qs, user=request.user)},
     )
 

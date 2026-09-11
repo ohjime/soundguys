@@ -1,0 +1,33 @@
+<c-vars tags />
+<!--
+What the picker opens on: the kinds of sound this listener works in, two across.
+Each is a <label> for the matching radio in the filter above the search box
+(c-library-swap-search), so pressing one checks that radio, collapses the filter
+row down to the chosen tag, and fires the radio's own search — one path through
+htmx instead of two that could disagree about what is filtered.
+
+The ids are positional rather than slugged from the name because both halves
+loop over the same `tags` list; a tag named "field / outdoor" would not survive
+slugify intact, and an index always matches.
+
+Each tile wears the tag's own DiceBear waves square (library.utils
+.generate_tag_artwork), which is where the seeding and the colours are
+explained. The art is dark and saturated, so the caption is white on a scrim
+rather than plain text — the same plate c-core-sound-empty-layer puts over its
+galaxy, for the same reason: the seed decides the hue, so the text cannot rely
+on any one of them.
+-->
+<div class="grid grid-cols-2 gap-3 p-3">
+    {% for tag in tags %}
+        <label for="tag-filter-{{ forloop.counter0 }}"
+               style="background-image: url('{{ tag.art }}')"
+               class="btn aspect-square h-auto w-full items-center justify-center overflow-hidden rounded-box border-0 bg-base-300 bg-cover bg-center p-2 text-center text-white shadow-md transition hover:scale-[1.03]">
+            <span class="flex max-w-full flex-col items-center gap-0.5 rounded-lg bg-black/45 px-2 py-1 backdrop-blur-sm">
+                <span class="text-xs leading-tight font-semibold break-words whitespace-normal">{{ tag.name }}</span>
+                <span class="text-[10px] leading-tight font-normal opacity-80">{{ tag.count }} sound{{ tag.count|pluralize }}</span>
+            </span>
+        </label>
+    {% empty %}
+        <p class="col-span-2 p-4 text-xs opacity-60">No tags yet — search for a sound by name instead.</p>
+    {% endfor %}
+</div>

@@ -1,4 +1,4 @@
-<c-vars id="" showExit="true" bgColor="bg-green-900", ringColor="ring-base-content" />
+<c-vars id="" key="" showExit="true" bgColor="bg-green-900", ringColor="ring-base-content" />
 <!-- djlint:off -->
 <div {% if id %}id="{{ id }}"{% endif %}
          x-data="{
@@ -13,6 +13,7 @@
          "
          @card:remove="
              removing = true;
+             $el.dataset.cardExiting = 'true';
              setTimeout(() => {
                  const deck = $el.parentElement;
                  const card = $el;
@@ -45,11 +46,20 @@
              opacity: ${mounted && !removing ? 1 : 0};
         `"
         data-core-card
+        {% if key %}data-card-key="{{ key }}"{% endif %}
         style="opacity: 0"
         class="card {{ bgColor }} ring-8 {{ ringColor }} shadow-2xl shadow-base-content/30 transition-all ease-out z-0 col-start-1 row-start-1 w-full rounded-b-4xl pb-2 flex flex-col rounded-t-3xl relative overflow-hidden">
     <!-- djlint:on -->
     {% if showExit == "true" %}
-        <button class="absolute top-3 right-3 btn btn-sm btn-circle btn-ghost"
+        <!--
+        A square, red, corner-anchored close. It sits over the content rather
+        than in the flow, flush into the card's top-right corner: the card is
+        `rounded-t-3xl overflow-hidden`, so the card's own radius is what clips
+        the button's outer corner — hence `rounded-none` here, and a 2.5rem box
+        so the arc trims the corner without reaching the glyph.
+        -->
+        <button class="btn btn-error btn-square rounded-none absolute top-0 right-0 z-10 size-10 min-h-0 border-0"
+                aria-label="Close card"
                 @click="$dispatch('card:remove')">
             <svg xmlns="http://www.w3.org/2000/svg"
                  viewBox="0 0 24 24"

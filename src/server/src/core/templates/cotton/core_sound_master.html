@@ -9,79 +9,83 @@ they did not build. The library and the studio pass nothing and the dialog opens
 empty. A mix the listener has already saved keeps the name they gave it either
 way; the server only falls back to this one.
 
+A mix loaded from the library is already named, and the store remembers that
+name in `loadedTitle` across edits — so tweaking a saved Cosound and saving it
+opens on its own title rather than on this fallback. `mix-titled` is the server
+saying what name the mix now answers to, so a rename sticks for the next save.
+
 `library:save` is reversed rather than passed in: every host that renders a
 soundscape card also mounts `library/` (see config/urls_studio.py), and saving is
 the one thing every surface does identically — a list of sound ids and gains.
 -->
-<div id="library-master" class="join rounded-xl">
+<!-- djlint:off -->
+<div id="library-master" class="join rounded-xl"
+     @mix-titled.window="if ($store.soundLayers) $store.soundLayers.loadedTitle = $event.detail.title">
+<!-- djlint:on -->
 
     <!-- Volume down: lowers all layer volumes -->
-    <div class="tooltip tooltip-top" data-tip="Lower all layers">
-        <button class="btn btn-sm py-2 btn-soft join-item"
-                aria-label="Lower all layers"
-                @click="$store.soundLayers?.masterVolumeDown()">
-            <svg xmlns="http://www.w3.org/2000/svg"
-                 viewBox="0 -960 960 960"
-                 fill="currentColor"
-                 class="size-[2em]">
-                <path d="M200-360v-240h160l200-200v640L360-360H200Zm440 40v-322q45 21 72.5 65t27.5 97q0 53-27.5 96T640-320ZM480-606l-86 86H280v80h114l86 86v-252ZM380-480Z" />
+    <div class="tooltip tooltip-top" data-tip="Lower all Sounds">
+        <button class="btn btn-sm py-2 btn-soft join-item" :disabled="$store.soundLayers?.swappingLayer"
+            aria-label="Lower all Sounds" @click="$store.soundLayers?.masterVolumeDown()">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="currentColor" class="size-[2em]">
+                <path
+                    d="M200-360v-240h160l200-200v640L360-360H200Zm440 40v-322q45 21 72.5 65t27.5 97q0 53-27.5 96T640-320ZM480-606l-86 86H280v80h114l86 86v-252ZM380-480Z" />
             </svg>
         </button>
     </div>
 
     <!-- Play / Pause toggle -->
     <div class="tooltip tooltip-top"
-         :data-tip="$store.soundLayers?.paused ? 'Resume the mix' : 'Pause the mix'">
-        <button class="btn btn-sm py-2 join-item"
-                :class="$store.soundLayers?.paused ? 'btn-success btn-soft' : 'btn-soft'"
-                :aria-label="$store.soundLayers?.paused ? 'Resume the mix' : 'Pause the mix'"
-                @click="$store.soundLayers?.paused ? $store.soundLayers.resume() : $store.soundLayers?.pause()">
-            <svg xmlns="http://www.w3.org/2000/svg"
-                 viewBox="0 -960 960 960"
-                 fill="currentColor"
-                 class="size-[3em]">
+        :data-tip="$store.soundLayers?.paused ? 'Resume this Cosound' : 'Pause this Cosound'">
+        <button class="btn btn-sm py-2 join-item" :disabled="$store.soundLayers?.swappingLayer"
+            :class="$store.soundLayers?.paused ? 'btn-success btn-soft' : 'btn-soft'"
+            :aria-label="$store.soundLayers?.paused ? 'Resume this Cosound' : 'Pause this Cosound'"
+            @click="$store.soundLayers?.paused ? $store.soundLayers.resume() : $store.soundLayers?.pause()">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="currentColor" class="size-[3em]">
                 <path d="M200-312v-336l240 168-240 168Zm320-8v-320h80v320h-80Zm160 0v-320h80v320h-80Z" />
             </svg>
         </button>
     </div>
 
-    <!-- Save mix. Off while the mix holds a layer with no sound in it: a saved
-         Cosound is a list of Sound ids, and a blank layer has none to send. The
-         tooltip wrapper can still show the reason while the button is disabled. -->
+    <!-- Save mix. A saved Cosound is a list of Sound ids, and a blank layer has
+         none to send, so `savableLayers` is what goes over the wire — an empty
+         slot is skipped rather than posted, and a mix that is nothing but empty
+         slots is an empty one, which is the reason the button is off. The
+         tooltip wrapper can still show that reason while the button is disabled.
+
+         Off while a swap is in flight too, like the rest of the transport. That
+         does not make the guard below dead code: `swappingLayer` goes false the
+         moment a layer is added, and the `+` button can do that with the picker
+         still covering the card — so the picker can be open while this button is
+         live, and clicking it then must still close the picker before saving. -->
     <!-- djlint:off -->
     <div class="tooltip tooltip-top"
-         :data-tip="$store.soundLayers?.canSave ? 'Save this mix' : $store.soundLayers?.saveBlockedReason">
+        :data-tip="$store.soundLayers?.canSave ? 'Save this Cosound' : $store.soundLayers?.saveBlockedReason">
         <button class="btn btn-sm py-2 btn-soft join-item"
-                :disabled="!$store.soundLayers?.canSave && !$store.soundLayers?.swappingLayer"
-                aria-label="Save this mix"
-                hx-post="{% url 'library:save' %}"
-                hx-trigger="click[!document.getElementById('login-card') && !document.getElementById('cancel-swap-button-list') && Alpine.store('soundLayers')?.canSave], sound-selector:cancelled[!document.getElementById('login-card') && Alpine.store('soundLayers')?.canSave]"
-                hx-swap="none"
-                @click.capture="if (window.cancelSoundSelectorBefore($el)) { $event.preventDefault(); $event.stopImmediatePropagation(); }"
-                hx-vals='js:{
-                    layers: JSON.stringify(Alpine.store("soundLayers").layers.map(l => ({ sound_id: l.sound_id, sound_gain: Alpine.store("soundLayers").isSilenced(l) ? 0 : l.gain / 100 }))),
-                    title: "{{ save_title|escapejs }}"
+            :disabled="!$store.soundLayers?.canSave || $store.soundLayers?.swappingLayer" aria-label="Save this Cosound"
+            hx-post="{% url 'library:save' %}"
+            hx-trigger="click[!document.getElementById('login-card') && !document.getElementById('cancel-swap-button-list') && Alpine.store('soundLayers')?.canSave], sound-selector:cancelled[!document.getElementById('login-card') && Alpine.store('soundLayers')?.canSave]"
+            hx-swap="none"
+            @click.capture="if (window.cancelSoundSelectorBefore($el)) { $event.preventDefault(); $event.stopImmediatePropagation(); }"
+            hx-vals='js:{
+                    layers: JSON.stringify(Alpine.store("soundLayers").savableLayers.map(l => ({ sound_id: l.sound_id, sound_gain: Alpine.store("soundLayers").isSilenced(l) ? 0 : l.gain / 100 }))),
+                    title: Alpine.store("soundLayers")?.loadedTitle || "{{ save_title|escapejs }}"
                 }'>
-            <svg xmlns="http://www.w3.org/2000/svg"
-                 viewBox="0 -960 960 960"
-                 fill="currentColor"
-                 class="size-[2em]">
-                <path d="M840-680v480q0 33-23.5 56.5T760-120H200q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h480l160 160Zm-80 34L646-760H200v560h560v-446ZM565-275q35-35 35-85t-35-85q-35-35-85-35t-85 35q-35 35-35 85t35 85q35 35 85 35t85-35ZM240-560h360v-160H240v160Zm-40-86v446-560 114Z" />
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="currentColor" class="size-[2em]">
+                <path
+                    d="M840-680v480q0 33-23.5 56.5T760-120H200q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h480l160 160Zm-80 34L646-760H200v560h560v-446ZM565-275q35-35 35-85t-35-85q-35-35-85-35t-85 35q-35 35-35 85t35 85q35 35 85 35t85-35ZM240-560h360v-160H240v160Zm-40-86v446-560 114Z" />
             </svg>
         </button>
     </div>
     <!-- djlint:on -->
 
     <!-- Volume up: raises all layer volumes -->
-    <div class="tooltip tooltip-top" data-tip="Raise all layers">
-        <button class="btn btn-sm py-2 btn-soft join-item"
-                aria-label="Raise all layers"
-                @click="$store.soundLayers?.masterVolumeUp()">
-            <svg xmlns="http://www.w3.org/2000/svg"
-                 viewBox="0 -960 960 960"
-                 fill="currentColor"
-                 class="size-[2em]">
-                <path d="M560-131v-82q90-26 145-100t55-168q0-94-55-168T560-749v-82q124 28 202 125.5T840-481q0 127-78 224.5T560-131ZM120-360v-240h160l200-200v640L280-360H120Zm440 40v-322q47 22 73.5 66t26.5 96q0 51-26.5 94.5T560-320ZM400-606l-86 86H200v80h114l86 86v-252ZM300-480Z" />
+    <div class="tooltip tooltip-top" data-tip="Raise all Sounds">
+        <button class="btn btn-sm py-2 btn-soft join-item" :disabled="$store.soundLayers?.swappingLayer"
+            aria-label="Raise all Sounds" @click="$store.soundLayers?.masterVolumeUp()">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="currentColor" class="size-[2em]">
+                <path
+                    d="M560-131v-82q90-26 145-100t55-168q0-94-55-168T560-749v-82q124 28 202 125.5T840-481q0 127-78 224.5T560-131ZM120-360v-240h160l200-200v640L280-360H120Zm440 40v-322q47 22 73.5 66t26.5 96q0 51-26.5 94.5T560-320ZM400-606l-86 86H200v80h114l86 86v-252ZM300-480Z" />
             </svg>
         </button>
     </div>

@@ -133,6 +133,24 @@ async function startedStore(rawLayers = [seededBlankLayer()], options = {}) {
     return store;
 }
 
+test("isolating a layer while the mix is still loading still silences the rest", async () => {
+    // A layer link in an Explore post sits in the writing below the card, so a
+    // reader can press one before the card has finished loading its files —
+    // long before there is a voice for setLayerSolo to reach.
+    const store = createSoundLayersStore(
+        [soundLayer({ sound_id: 1 }), soundLayer({ sound_id: 2 })],
+        { settleProgress: () => Promise.resolve() },
+    );
+    const loading = store.initialize();
+    store.toggleIsolate(store.layers[1]);
+    await loading;
+
+    assert.deepEqual(
+        store._engine.voices.map((voice) => voice.config.solo),
+        [false, true],
+    );
+});
+
 test("destroy clears playback state before a replacement store mounts", async () => {
     const store = await startedStore();
     store.started = true;
@@ -186,6 +204,30 @@ test("loading a saved mix starts its replacement layers", async () => {
     assert.equal(store.started, true);
     assert.equal(store.paused, false);
     assert.equal(store.layers[0].sound_title, "Rain");
+});
+
+test("a loaded mix keeps its name through edits", async () => {
+    const store = await startedStore();
+    store._engine.play = async () => {};
+
+    await store.loadMix({ title: "Storm", layers: [soundLayer()] });
+    assert.equal(store.loadedTitle, "Storm");
+
+    // The name is what the save dialog opens on, and it has to survive the
+    // editing it is there for: tweak a loaded Cosound and keeping the name is
+    // what saves over it.
+    await store.addLayer(makeDraftLayer({ artistName: "Some Artist" }));
+    assert.equal(store.loadedTitle, "Storm");
+});
+
+test("a mix that was never saved has no name to open the dialog on", async () => {
+    const store = await startedStore();
+    store._engine.play = async () => {};
+
+    assert.equal(store.loadedTitle, "");
+
+    await store.loadMix({ layers: [soundLayer()] });
+    assert.equal(store.loadedTitle, "");
 });
 
 test("a blank layer added in the browser cannot collide with the seeded one", async () => {
@@ -277,6 +319,79 @@ test("filling a blank layer puts its controls back", async () => {
     assert.equal(store.layers[0].sound_title, "Rain");
     // The card stops greying a layer by its fader only while it is blank.
     assert.equal(store.grayscaleFor(store.layers[0]), 50);
+});
+
+test("a layer's artist page travels with its source, never from the layer before", async () => {
+    // The carousel sends a press on the artist's name straight to this URL, so
+    // a stale one is a credit pointing at somebody else's site. The studio's
+    // file drop is the case that exposes it: it names no artist at all.
+    const store = await startedStore([
+        soundLayer({ artist_url: "https://cameron.example/" }),
+    ]);
+    assert.equal(store.layers[0].artist_url, "https://cameron.example/");
+
+    await store.setLayerSource(0, {
+        sound_file: "blob:local-track",
+        sound_title: "My own take",
+        is_local: true,
+    });
+    assert.equal(store.layers[0].artist_url, "");
+
+    await store.setLayerSource(0, {
+        sound_id: 12,
+        sound_file: "/media/sounds/bell.ogg",
+        sound_title: "Harbour Bell",
+        artist_url: "https://sam.example/",
+    });
+    assert.equal(store.layers[0].artist_url, "https://sam.example/");
+});
+
+test("a mix of nothing but blank layers is an empty one to save", async () => {
+    // The studio opens on a seeded blank layer, so this is what the save button
+    // faces the moment the builder loads.
+    const store = await startedStore();
+    await store.addBlankLayer();
+
+    assert.equal(store.layers.length, 2);
+    assert.deepEqual(store.savableLayers, []);
+    assert.equal(store.canSave, false);
+    assert.equal(store.saveBlockedReason, "Can't save empty Cosound.");
+});
+
+test("a blank layer alongside a sound neither blocks the save nor joins it", async () => {
+    const store = await startedStore([soundLayer()]);
+    await store.addBlankLayer();
+
+    assert.equal(store.layers.length, 2);
+    assert.equal(store.canSave, true);
+    assert.equal(store.saveBlockedReason, "");
+    // What the transport posts: the blank slot is simply not part of the mix.
+    assert.deepEqual(
+        store.savableLayers.map((layer) => layer.sound_id),
+        [9],
+    );
+});
+
+test("a track from the artist's own machine still blocks the save", async () => {
+    // A blank layer is marked local too — it has no Sound row either — so this
+    // is the check that skipping blanks did not take the local guard with it.
+    const store = await startedStore([soundLayer({ is_local: true })]);
+
+    assert.equal(store.canSave, false);
+    assert.equal(
+        store.saveBlockedReason,
+        "Mixes with your own tracks stay on this device.",
+    );
+});
+
+test("filling the last blank layer turns the save button on", async () => {
+    const store = await startedStore();
+    assert.equal(store.canSave, false);
+
+    await store.setLayerSource(0, { sound_id: 7, sound_file: "", sound_title: "Rain" });
+
+    assert.equal(store.canSave, true);
+    assert.equal(store.saveBlockedReason, "");
 });
 
 test("the swapping screen stays up until audio and artwork are ready", async () => {

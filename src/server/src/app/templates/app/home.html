@@ -60,25 +60,130 @@ cotton/app_about_article.html.
 {% partialdef tab_about %}
     <c-app-about-article />
 {% endpartialdef %}
+<!--
+Naming the mix on the way to saving it. The box opens on the name the mix
+already answers to — the Cosound it was loaded from, or the title an Explore
+post suggested — so keeping that name saves over it and typing a different one
+saves a second Cosound alongside the first.
+
+Which of the two is about to happen is the thing the box has to say out loud,
+and it says it in the weight of the text: a name carried in from a loaded
+Cosound is bold, and an unnamed mix shows a faded grey `Empty`. Bold is
+therefore "this will replace something", plain grey "this is new". The class is
+bound rather than baked in so it keeps up with typing — clear the box and it
+fades, type over it and it goes bold again.
+
+The cursor is deliberately not put in the box. A prefilled name is a decision
+already made — the common answer is Save — and a caret sitting in it invites a
+listener to type into a name they meant to keep. The X is the way out instead:
+one click empties the box for a new name, and it is only rendered when there
+was a name to clear.
+
+`validator` is daisyUI's: the box only turns on a colour once the listener has
+actually touched it (`:user-invalid`), so an empty box is not scolded for being
+empty before anyone has typed. `validator-hint` reserves its line whether or
+not it is showing, so the dialog does not jump when the message appears.
+
+`existing_saved_at` is only there when these exact layers are already a row in
+the table — the mix has been saved before, unedited. Anything else has no time
+to show, and the line is left out rather than filled with a guess.
+
+Saving over a *different* Cosound that happens to share the name is the
+destructive case, and the server answers that one with #mix_overwrite_modal
+instead of writing it.
+-->
 {% partialdef mix_title_modal %}
-    <h3 class="font-bold text-lg">Name your cosound</h3>
+    <h3 class="text-lg font-bold">Name your cosound</h3>
+    <!-- djlint:off -->
     <form hx-post="{% url 'library:save_confirm' %}"
           hx-target="#core_modal_content"
           hx-swap="innerHTML"
-          class="flex flex-col gap-4 py-4">
+          class="flex flex-col gap-4 py-4"
+          x-data="{ title: '{{ existing_title|escapejs }}' }">
+    <!-- djlint:on -->
         {% csrf_token %}
         <input type="hidden" name="layers" value="{{ layers_json }}" />
-        <label class="input w-full">
-            <input type="text"
-                   name="title"
-                   value="{{ existing_title }}"
-                   placeholder="Mix title"
-                   maxlength="255"
-                   autofocus
-                   required />
-        </label>
+        <div>
+            <label class="input validator w-full">
+                <input type="text"
+                       name="title"
+                       value="{{ existing_title }}"
+                       x-ref="title"
+                       x-model="title"
+                       :class="title.trim() ? 'font-bold' : 'font-normal'"
+                       class="placeholder:text-base-content/40 placeholder:font-normal placeholder:italic"
+                       placeholder="Empty"
+                       maxlength="255"
+                       required />
+                {% if existing_title %}
+                    <button type="button"
+                            class="btn btn-ghost btn-xs btn-circle"
+                            aria-label="Clear the name"
+                            x-show="title"
+                            @click="title = ''; $refs.title.focus()">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="currentColor" class="size-4">
+                            <path d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z" />
+                        </svg>
+                    </button>
+                {% endif %}
+            </label>
+            <p class="validator-hint">A cosound needs a name.</p>
+        </div>
+        {% if existing_saved_at %}
+            <p class="text-base-content/60 text-xs">
+                Last saved {{ existing_saved_at|date:"M j, Y" }} at {{ existing_saved_at|time:"g:i A" }}
+            </p>
+        {% endif %}
         <div class="modal-action">
             <button type="submit" class="btn btn-primary">Save</button>
         </div>
     </form>
+{% endpartialdef %}
+<!--
+The overwrite warning. Reached only from #mix_title_modal, and only when the
+name typed there belongs to a Cosound whose layers are not these — saving would
+put this mix under that name and leave nothing pointing at the old one, so the
+listener gets to say whether that is what they meant.
+
+Re-saving a Cosound under its own name never lands here: same layers, same
+Cosound, nothing lost.
+
+Both buttons carry the layers back, because the mix itself is not server state —
+`Rename` re-opens the naming box on the same mix, and `Overwrite` is the same
+save again with the confirmation attached.
+
+The date is the one being replaced, not this one — what is about to be lost is
+the point of the question, and a listener who saved that a minute ago is in a
+different situation from one who saved it in March.
+-->
+{% partialdef mix_overwrite_modal %}
+    <h3 class="text-lg font-bold">Overwrite “{{ title }}”?</h3>
+    <p class="py-4 text-sm">
+        You already have a cosound named <span class="font-bold">{{ title }}</span>, and its layers are different from these.
+        Saving replaces it — the one you saved before is gone.
+    </p>
+    {% if overwritten_saved_at %}
+        <p class="text-base-content/60 -mt-2 pb-4 text-xs">
+            Last saved {{ overwritten_saved_at|date:"M j, Y" }} at {{ overwritten_saved_at|time:"g:i A" }}
+        </p>
+    {% endif %}
+    <div class="modal-action">
+        <form hx-post="{% url 'library:save' %}"
+              hx-target="#core_modal_content"
+              hx-swap="innerHTML">
+            {% csrf_token %}
+            <input type="hidden" name="layers" value="{{ layers_json }}" />
+            <input type="hidden" name="title" value="{{ title }}" />
+            <button type="submit" class="btn btn-ghost">Rename instead</button>
+        </form>
+        <form hx-post="{% url 'library:save_confirm' %}"
+              hx-target="#core_modal_content"
+              hx-swap="innerHTML">
+            {% csrf_token %}
+            <input type="hidden" name="layers" value="{{ layers_json }}" />
+            <input type="hidden" name="title" value="{{ title }}" />
+            <input type="hidden" name="overwrite" value="1" />
+            <button type="submit" class="btn btn-error">Overwrite</button>
+        </form>
+    </div>
 {% endpartialdef %}

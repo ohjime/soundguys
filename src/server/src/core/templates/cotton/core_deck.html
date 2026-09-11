@@ -1,5 +1,20 @@
 <!-- djlint:off -->
 <c-vars id="" />
+<!--
+One overlay at a time. Cards rendered with a `key` (the ones views push onto
+the deck) are mutually exclusive: drawing a card whose key is already on the
+deck is a no-op, and drawing a different one pops what is there first. Keyless
+cards — the page's own base card — are outside the rule and never popped.
+
+The rule lives here rather than in the views because only the deck knows what
+is currently on it; a view answering an htmx request cannot. The cost is one
+wasted round trip when a listener presses the same button twice, paid to keep
+the deck the single owner of its own stacking.
+
+A card being popped keeps `data-card-exiting` until it leaves the DOM, so a
+card on its way out neither blocks its own replacement nor gets told to exit
+a second time.
+-->
 <div {% if id %}id="{{ id }}"{% endif %}
     class="grid w-full max-w-80"
      x-data="{
@@ -18,8 +33,23 @@
     x-init="
         const countCards = () => $el.querySelectorAll(':scope > [data-core-card]').length;
         cardCount = countCards();
-        new MutationObserver(() => {
+        new MutationObserver((mutations) => {
             cardCount = countCards();
+            for (const mutation of mutations) {
+                for (const node of mutation.addedNodes) {
+                    if (node.nodeType !== 1 || !node.matches('[data-card-key]')) continue;
+                    const others = Array.from(
+                        $el.querySelectorAll(':scope > [data-card-key]:not([data-card-exiting])')
+                    ).filter(el => el !== node);
+                    if (others.some(el => el.dataset.cardKey === node.dataset.cardKey)) {
+                        node.remove();
+                    } else {
+                        others.forEach(el => el.dispatchEvent(
+                            new CustomEvent('card:remove', { bubbles: true })
+                        ));
+                    }
+                }
+            }
         }).observe($el, {
             childList: true,
         });

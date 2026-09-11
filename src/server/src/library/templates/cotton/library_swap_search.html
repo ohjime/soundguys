@@ -1,10 +1,61 @@
-<c-vars count="" />
+<c-vars count="" tags />
+<!--
+One line above the search box, holding either the label or the filter. Idle it
+reads "Search Collected Sounds"; with a tag active it reads "× rain". The chips
+for every other tag are always in the DOM and always zero-width — which arm is
+showing is decided in CSS, by `.tag-filter` in vite/assets/css/main.css, where
+the reasoning for collapsing rather than removing them lives.
+
+The radios are the single source of truth for the tag filter. The buttons in
+c-library-swap-tags are <label>s pointing at these ids, so a press over the
+artwork checks the radio here and the radio's own hx-get runs the search — the
+grid never issues a request of its own, and the two cannot disagree about what
+is filtered.
+
+The two hx-includes are what make tag and text compose: typing carries the
+checked radio along, and pressing a tag carries whatever is already typed. The
+reset has no name, so its request carries the text and no tag — and with an
+empty box that is the "neither" case, which brings the tag buttons back.
+
+`w-max` inside a `min-w-0` scroller rather than a flex-wrap override: daisyUI
+sets `flex-wrap: wrap` on `.filter`, and a max-content-wide form never needs to
+wrap. `min-w-0` is what makes the scroller actually scroll — a flex item defaults
+to `min-width: auto`, so without it a long tag name pushes the row wider than
+the card instead of sliding under it.
+-->
 <fieldset class="fieldset">
-    <legend class="fieldset-legend text-neutral fill-neutral flex items-center gap-2">
-        Search Collected Sounds
+    <div class="tag-filter fieldset-legend w-full min-w-0 text-neutral fill-neutral">
+        <span class="tag-filter-label">Search Collected Sounds</span>
+        <div class="min-w-0 flex-1 overflow-x-auto">
+            <form class="filter w-max" id="sound-tag-filter">
+                <input class="btn btn-xs btn-square filter-reset"
+                       type="reset"
+                       value="×"
+                       aria-label="Clear tag filter"
+                       hx-get="{% url 'library:search' %}"
+                       hx-trigger="click"
+                       hx-include="#sound-search-input"
+                       hx-target="#sound-search-results"
+                       hx-swap="innerHTML"
+                       hx-indicator="#sound-search-indicator" />
+                {% for tag in tags %}
+                    <input class="btn btn-xs"
+                           type="radio"
+                           id="tag-filter-{{ forloop.counter0 }}"
+                           name="tag"
+                           value="{{ tag.name }}"
+                           aria-label="{{ tag.name }} ({{ tag.count }})"
+                           hx-get="{% url 'library:search' %}"
+                           hx-include="#sound-search-input"
+                           hx-target="#sound-search-results"
+                           hx-swap="innerHTML"
+                           hx-indicator="#sound-search-indicator" />
+                {% endfor %}
+            </form>
+        </div>
         <span id="sound-search-indicator"
-              class="htmx-indicator loading loading-spinner loading-xs"></span>
-    </legend>
+              class="htmx-indicator loading loading-spinner loading-xs shrink-0"></span>
+    </div>
     <label class="input bg-white outline-neutral">
         <svg class="h-[1em] opacity-50"
              xmlns="http://www.w3.org/2000/svg"
@@ -17,10 +68,11 @@
         <input type="search"
                id="sound-search-input"
                name="q"
-               required
+               autocomplete="off"
                placeholder="Search {{ count }} Sounds"
                hx-get="{% url 'library:search' %}"
                hx-trigger="input changed delay:300ms, search"
+               hx-include="#sound-tag-filter"
                hx-target="#sound-search-results"
                hx-swap="innerHTML"
                hx-indicator="#sound-search-indicator"

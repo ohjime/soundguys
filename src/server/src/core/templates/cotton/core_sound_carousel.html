@@ -1,13 +1,14 @@
-<c-vars name="soundLayers" artist_url="" swap_url="" />
+<c-vars name="soundLayers" swap_url="" />
 <!--
-`artist_url` is passed in rather than reversed here, because this component is
-shared across urlconfs. The url tag resolves against the *per-request* urlconf
-(see config.middleware.SubdomainURLConf), and the studio host does not mount
-`app` — reversing `app:artist_details` in here would blow up the studio with
-NoReverseMatch. Callers that have the route pass it; the studio does not, and
-the artist name renders as plain text.
+The artist named on a layer is read from the layer itself — `artist_url`, the
+artist's own page, off this site. Nothing about the credit is passed in or
+reversed here, which is what lets this component render the same way on every
+host, the studio included.
 
-`swap_url` rides along for the same reason and reaches c-core-sound-empty-layer,
+`swap_url` is passed in rather than reversed here, because this component is
+shared across urlconfs. The url tag resolves against the *per-request* urlconf
+(see config.middleware.SubdomainURLConf), and not every host mounts every app.
+It reaches c-core-sound-empty-layer,
 which is what a blank layer looks like on the card. The library passes its swap
 route so pressing the empty card opens the sound picker; the studio passes
 nothing, because there the card is a readout and the settings pane fills the
@@ -89,20 +90,29 @@ file is the wiring and the caption.
             aria-label="Remove current layer" title="Remove current layer" @click="removeCurrent()">
             <c-icons.trash class="size-4" />
         </button>
-        {% if artist_url %}
-        <!-- A locally-dropped studio track has no Sound row, so there is no
-                 artist page to open — the button goes inert rather than posting
-                 an id the server cannot resolve. -->
-        <button type="button"
-            class="pointer-events-auto self-end text-right pb-1 pr-1 text-sm opacity-90 transition enabled:cursor-pointer enabled:hover:opacity-100 enabled:hover:underline"
-            x-text="$store.{{ name }}.currentLayer?.sound_artist" :disabled="$store.{{ name }}.currentLayer?.isLocal"
-            title="View artist" hx-get="{{ artist_url }}" hx-swap="none"
-            :hx-vals="JSON.stringify({ sound_id: $store.{{ name }}.currentLayer?.sound_id })"></button>
-        {% else %}
+        <!-- The artist credited on the layer showing. A press reaches their
+             own page when they have given us one, opened in a new tab because
+             a mix is playing here and this whole front end is one page.
+
+             An artist without one is a name and nothing more. There is nowhere
+             to send anybody, so it is not a link and does not invite a press —
+             we deliberately host no page of our own to stand in for theirs.
+
+             The link starts hidden from its own style attribute rather than
+             from x-cloak, which this project has no CSS rule for and so hides
+             nothing — without it both names paint for the frame before Alpine
+             picks one. x-show clears that inline display itself when it
+             decides the link is the one to show, and the plain name paints
+             first so the credit is never missing from the card. -->
+        <a style="display: none" x-show="$store.{{ name }}.currentLayer?.artist_url"
+            :href="$store.{{ name }}.currentLayer?.artist_url" target="_blank" rel="noopener"
+            class="pointer-events-auto self-end text-right pb-1 pr-1 text-sm opacity-90 transition hover:cursor-pointer hover:opacity-100 hover:underline"
+            :title="`Visit ${$store.{{ name }}.currentLayer?.sound_artist}'s page`"
+            x-text="$store.{{ name }}.currentLayer?.sound_artist"></a>
         <div class="self-end pb-1 pr-1 text-right text-sm opacity-90"
+            x-show="!$store.{{ name }}.currentLayer?.artist_url"
             x-text="$store.{{ name }}.currentLayer?.sound_artist">
         </div>
-        {% endif %}
     </div>
 
 </div>

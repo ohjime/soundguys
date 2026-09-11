@@ -15,6 +15,7 @@
         <input type="search"
                id="sound-search-input"
                name="q"
+               autocomplete="off"
                placeholder="Search {{ count }} sounds"
                hx-get="{% url 'studio:library_search' %}"
                hx-trigger="input changed delay:300ms, search"

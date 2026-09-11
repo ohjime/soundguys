@@ -21,7 +21,9 @@ options pill, which is there so the card still reads as a cosound card.
 
 A saved Cosound is a list of Sound ids, and a track from the artist's own
 machine has no row to point at — `$store.soundLayers.canSave` is what the
-transport reads, and `saveBlockedReason` is what it says when it is off.
+transport reads, and `saveBlockedReason` is what it says when it is off. A blank
+layer is not one of those ids either, but it does not block the save: it is left
+out of the post, and only a mix with nothing else in it counts as empty.
 
 The behaviour lives in `vite/assets/js/studio-builder.js`, registered as the
 `studioBuilder` Alpine component. It is not in an `x-data` attribute any more
