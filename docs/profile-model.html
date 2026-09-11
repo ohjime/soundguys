@@ -1,0 +1,617 @@
+<title>One Vector, Two Certainties</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,300..800&family=Newsreader:ital,opsz,wght@0,6..72,200..700;1,6..72,300..500&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --ground:   #ECEEEA;
+    --surface:  #F6F7F4;
+    --surface-2:#E2E5E0;
+    --ink:      #16201D;
+    --muted:    #5B6763;
+    --rule:     #CFD5CE;
+    --oxide:    #A8452D;
+    --teal:     #0E6F6C;
+    --shadow:   0 1px 0 rgba(22,32,29,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:   #121715;
+      --surface:  #1A211E;
+      --surface-2:#232B27;
+      --ink:      #E3E8E3;
+      --muted:    #93A09A;
+      --rule:     #2E3833;
+      --oxide:    #E08063;
+      --teal:     #45B7B1;
+      --shadow:   0 1px 0 rgba(0,0,0,.3);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:   #121715;
+    --surface:  #1A211E;
+    --surface-2:#232B27;
+    --ink:      #E3E8E3;
+    --muted:    #93A09A;
+    --rule:     #2E3833;
+    --oxide:    #E08063;
+    --teal:     #45B7B1;
+    --shadow:   0 1px 0 rgba(0,0,0,.3);
+  }
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "Newsreader", Georgia, "Times New Roman", serif;
+    font-size: 19px;
+    line-height: 1.62;
+    font-optical-sizing: auto;
+    -webkit-font-smoothing: antialiased;
+    -webkit-text-size-adjust: 100%;
+  }
+  .page {
+    display: grid;
+    grid-template-columns:
+      [full-start] minmax(1.25rem, 1fr)
+      [wide-start] minmax(0, 9rem)
+      [text-start] min(40rem, 100% - 2.5rem) [text-end]
+      minmax(0, 9rem) [wide-end]
+      minmax(1.25rem, 1fr) [full-end];
+    row-gap: 1.3rem;
+    padding: 0 0 5rem;
+  }
+  .page > * { grid-column: text; }
+  .page > .wide { grid-column: wide; }
+  .lede { padding: 4rem 0 .6rem; }
+  .eyebrow {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .715rem; font-weight: 500;
+    letter-spacing: .14em; text-transform: uppercase;
+    color: var(--muted); margin: 0 0 1.4rem;
+  }
+  .eyebrow .dot { color: var(--rule); padding: 0 .35em; }
+  h1 {
+    font-family: "Bricolage Grotesque", "Helvetica Neue", sans-serif;
+    font-weight: 800; font-variation-settings: "wdth" 88;
+    font-size: clamp(2.6rem, 7.4vw, 4.1rem);
+    line-height: .96; letter-spacing: -.02em;
+    text-wrap: balance; margin: 0 0 1.1rem;
+  }
+  .dek {
+    font-size: 1.24rem; line-height: 1.45; color: var(--muted);
+    max-width: 34ch; margin: 0 0 1.9rem; font-weight: 300;
+  }
+  .byline {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .74rem; color: var(--muted); line-height: 1.7;
+    border-top: 1px solid var(--rule); padding-top: .9rem; margin: 0;
+  }
+  p { margin: 0; }
+  strong { font-weight: 600; }
+  em.term { font-style: normal; font-weight: 600; color: var(--teal); }
+  .drop::first-letter {
+    font-family: "Bricolage Grotesque", sans-serif;
+    font-weight: 700; font-size: 3.1rem; line-height: .8;
+    float: left; padding: .12em .1em 0 0; color: var(--oxide);
+  }
+  .quote {
+    font-family: "Bricolage Grotesque", sans-serif;
+    font-weight: 500; font-variation-settings: "wdth" 90;
+    font-size: clamp(1.45rem, 3.3vw, 1.95rem); line-height: 1.18;
+    letter-spacing: -.015em;
+    border-left: 3px solid var(--oxide);
+    padding: .3rem 0 .3rem 1.4rem;
+    margin: 1.1rem 0 .4rem;
+    text-wrap: balance;
+  }
+  .quote.settled { border-left-color: var(--teal); }
+
+  figure { margin: 1.7rem 0 1.2rem; display: grid; gap: .85rem; }
+  figure svg { width: 100%; min-width: 720px; height: auto; display: block; }
+  .figwrap {
+    overflow-x: auto; background: var(--surface);
+    border: 1px solid var(--rule); border-radius: 3px;
+    padding: 1.15rem 1rem; box-shadow: var(--shadow);
+  }
+  figcaption {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .755rem; line-height: 1.65; color: var(--muted); max-width: 60ch;
+  }
+  figcaption b { color: var(--ink); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; font-size: .93em; }
+  .d-box   { fill: var(--surface-2); stroke: var(--rule); stroke-width: 1; }
+  .d-box.k-warn { stroke: var(--oxide); }
+  .d-box.k-good { stroke: var(--teal); stroke-width: 1.6; }
+  .d-bound { fill: none; stroke: var(--oxide); stroke-width: 1; stroke-dasharray: 5 4; }
+  .d-bound.good { stroke: var(--teal); }
+  .d-t     { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11.5px; fill: var(--ink); }
+  .d-t.sm  { font-size: 10px; fill: var(--muted); }
+  .d-t.hd  { font-size: 11px; font-weight: 600; letter-spacing: .12em; fill: var(--muted); }
+  .d-t.warn{ fill: var(--oxide); }
+  .d-t.good{ fill: var(--teal); }
+  .d-line  { fill: none; stroke: var(--ink); stroke-width: 2.2; }
+  .d-line.weak { stroke: var(--oxide); stroke-width: 1.4; stroke-dasharray: 4 4; }
+  .d-line.good { stroke: var(--teal); stroke-width: 1.8; }
+  .d-line.hair { stroke: var(--rule); stroke-width: 1; }
+  .d-head  { fill: var(--ink); }
+  .d-head.warn { fill: var(--oxide); }
+  .d-head.good { fill: var(--teal); }
+  .d-fill-warn { fill: var(--oxide); }
+  .d-fill-good { fill: var(--teal); }
+  .d-fill-ink  { fill: var(--ink); }
+  .d-fill-muted{ fill: var(--muted); }
+
+  .sec {
+    border-top: 1px solid var(--rule);
+    margin-top: 1.8rem; padding-top: 2.6rem;
+    display: grid; gap: .55rem;
+  }
+  .sec-mark {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .715rem; font-weight: 600;
+    letter-spacing: .14em; text-transform: uppercase;
+    color: var(--teal); margin: 0;
+  }
+  .sec-mark.open { color: var(--oxide); }
+  h2 {
+    font-family: "Bricolage Grotesque", "Helvetica Neue", sans-serif;
+    font-weight: 700; font-variation-settings: "wdth" 92;
+    font-size: clamp(1.8rem, 3.8vw, 2.3rem);
+    line-height: 1.05; letter-spacing: -.018em;
+    text-wrap: balance; margin: 0;
+  }
+  h3 {
+    font-family: "Bricolage Grotesque", "Helvetica Neue", sans-serif;
+    font-weight: 600; font-variation-settings: "wdth" 95;
+    font-size: 1.16rem; line-height: 1.25; letter-spacing: -.01em;
+    margin: 1.1rem 0 0;
+  }
+
+  /* Code — the shape of the thing we are proposing to write. */
+  .code {
+    overflow-x: auto;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-left: 2px solid var(--teal);
+    border-radius: 3px;
+    padding: .95rem 1.05rem;
+    margin: .5rem 0 .2rem;
+  }
+  .code pre {
+    margin: 0;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .755rem; line-height: 1.72; color: var(--ink);
+    white-space: pre;
+  }
+  .code .cm { color: var(--muted); }
+  .code .kw { color: var(--oxide); }
+  .code cite {
+    display: block; font-style: normal;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .7rem; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: .6rem;
+  }
+
+  /* Literature — a reading list where the verdict is the point, not the citation. */
+  .lit { display: grid; gap: 0; margin: .8rem 0 .2rem; border-top: 1px solid var(--rule); }
+  .lit-row {
+    display: grid; grid-template-columns: 1fr; gap: .3rem;
+    padding: .95rem 0; border-bottom: 1px solid var(--rule);
+  }
+  @media (min-width: 46rem) {
+    .lit-row { grid-template-columns: 15rem 1fr; gap: 1.4rem; align-items: baseline; }
+  }
+  .lit-cite {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .72rem; line-height: 1.55; color: var(--ink);
+  }
+  .lit-cite span { display: block; color: var(--muted); }
+  .lit-what { font-size: .96rem; line-height: 1.5; color: var(--muted); }
+  .lit-what b { color: var(--ink); font-weight: 600; }
+  .verdict {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .66rem; letter-spacing: .1em; text-transform: uppercase;
+    padding: .12em .5em; border-radius: 2px; white-space: nowrap;
+    border: 1px solid currentColor;
+  }
+  .verdict.take { color: var(--teal); }
+  .verdict.later { color: var(--muted); }
+  .verdict.skip { color: var(--oxide); }
+
+  /* Schema — real columns, so the migration is legible as a migration. */
+  .spec { overflow-x: auto; margin: .7rem 0 .2rem; }
+  table { border-collapse: collapse; width: 100%; min-width: 34rem; }
+  th, td {
+    text-align: left; padding: .5rem .8rem .5rem 0;
+    border-bottom: 1px solid var(--rule);
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .74rem; line-height: 1.5; vertical-align: top;
+    font-variant-numeric: tabular-nums;
+  }
+  th {
+    color: var(--muted); font-weight: 600;
+    letter-spacing: .1em; text-transform: uppercase; font-size: .66rem;
+    border-bottom-color: var(--ink);
+  }
+  td.note { font-family: "Newsreader", Georgia, serif; font-size: .92rem; color: var(--muted); }
+
+  /* Build order — numbered because these genuinely block one another. */
+  .steps { display: grid; gap: 0; margin: .9rem 0 .2rem; counter-reset: step; }
+  .step {
+    display: grid; grid-template-columns: 2.4rem 1fr; gap: .9rem;
+    padding: 1rem 0; border-bottom: 1px solid var(--rule);
+  }
+  .step:first-child { border-top: 1px solid var(--rule); }
+  .step::before {
+    counter-increment: step; content: counter(step, decimal-leading-zero);
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .78rem; font-weight: 600; color: var(--teal);
+    padding-top: .18em; font-variant-numeric: tabular-nums;
+  }
+  .step h4 {
+    margin: 0 0 .2rem;
+    font-family: "Bricolage Grotesque", "Helvetica Neue", sans-serif;
+    font-weight: 600; font-variation-settings: "wdth" 95;
+    font-size: 1.02rem; line-height: 1.3;
+  }
+  .step p { font-size: .96rem; line-height: 1.5; color: var(--muted); }
+  .step code, p code, li code, .lit-what code, td code {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .84em; color: var(--ink);
+    background: var(--surface-2); padding: .08em .35em; border-radius: 2px;
+  }
+
+  .flags { display: grid; gap: .9rem; margin: .8rem 0 .2rem; }
+  .flag {
+    display: grid; gap: .25rem;
+    border-left: 2px solid var(--oxide); padding: .1rem 0 .1rem 1rem;
+  }
+  .flag h4 {
+    margin: 0;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .73rem; letter-spacing: .06em; color: var(--oxide);
+  }
+  .flag p { font-size: .96rem; line-height: 1.5; color: var(--muted); }
+
+  ul.plain { margin: .3rem 0 0; padding-left: 1.15rem; display: grid; gap: .4rem; }
+  ul.plain li { font-size: .99rem; line-height: 1.5; color: var(--muted); }
+  ul.plain li b { color: var(--ink); font-weight: 600; }
+
+  .coda {
+    border-top: 1px solid var(--rule);
+    margin-top: 1.6rem; padding-top: 1.3rem;
+    display: grid; gap: .5rem;
+  }
+  .coda-h {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .72rem; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--oxide); display: flex; align-items: center; gap: .5rem;
+  }
+  .coda-h::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--oxide); }
+  .coda p { font-size: 1rem; color: var(--muted); }
+  :focus-visible { outline: 2px solid var(--teal); outline-offset: 3px; }
+  @media (max-width: 34rem) {
+    body { font-size: 18px; }
+    .lede { padding-top: 2.6rem; }
+    .figwrap { padding: .8rem .7rem; }
+    .dek { max-width: none; }
+  }
+</style>
+
+<div class="page">
+
+  <header class="lede">
+    <p class="eyebrow">CoSounds<span class="dot">/</span>Stage four<span class="dot">/</span>Design memo</p>
+    <h1>One vector, two certainties</h1>
+    <p class="dek">The profiling roadblock isn&rsquo;t two formats that need reconciling. It&rsquo;s one format at two levels of confidence &mdash; and half of it is already in the schema.</p>
+    <p class="byline">A reading of <code>src/server</code> against the recommender literature.<br>What to build, in what order, and what it costs in Django.</p>
+  </header>
+
+  <p class="drop">The field notes end on a problem: a signed-up voter gives three signals, an anonymous voter gives one, and nothing downstream can be built until those resolve into a single way of describing a listener. That is the right thing to be stuck on. But reading the vote path alongside the literature, the obstacle is narrower than it looks, and the reason is sitting in <code>login/views.py</code>.</p>
+
+  <section class="sec">
+    <p class="sec-mark">Finding one</p>
+    <h2>You don&rsquo;t have anonymous voters</h2>
+    <p>You have anonymous <em>accounts</em>. <code>submit_vote</code> refuses an unauthenticated request outright and pushes the login card instead (<code>vote/views.py:37</code>). The &ldquo;continue anonymously&rdquo; path in <code>login_anonymously</code> mints a real <code>User</code> with an <code>@anon.cosound.ca</code> address, calls <code>Listener.objects.get_or_create</code>, and logs them in. Every vote in the table already points at a <code>Listener</code> row through a non-nullable FK.</p>
+    <p>So there is no second entity to harmonise with. Both kinds of voter are the same row in the same table. What differs is not their <em>format</em> &mdash; it is how much you know about them.</p>
+    <p class="quote settled">Not two profile shapes. One shape, held with two different amounts of confidence.</p>
+    <p>That reframing matters because &ldquo;two representations that must be reconciled&rdquo; is a genuinely hard modelling problem with no clean answer, whereas &ldquo;one representation, sparsely observed for some users&rdquo; is the <strong>cold-start problem</strong>, which has forty years of literature and a standard shape: a profile is a <strong>posterior</strong> &mdash; a mean vector plus a confidence &mdash; not a point. A survey sets the prior. Votes shrink the variance. An anonymous listener with two taps isn&rsquo;t a different kind of object; they&rsquo;re the same object sitting near the population mean with a wide covariance, which is exactly what you want, because it makes the system appropriately unwilling to bet on them.</p>
+  </section>
+
+  <figure class="wide">
+    <div class="figwrap">
+      <svg viewBox="0 0 760 260" role="img" aria-label="Two listener posteriors plotted on the same two axes: the anonymous listener is a wide ellipse near the centre, the surveyed listener a tight ellipse offset from it.">
+        <text x="0" y="12" class="d-t hd">THE SAME PLANE, TWO POSTERIORS</text>
+
+        <!-- axes -->
+        <line x1="60" y1="230" x2="470" y2="230" class="d-line hair"></line>
+        <line x1="265" y1="40" x2="265" y2="230" class="d-line hair"></line>
+        <text x="330" y="248" class="d-t sm">pleasantness &rarr;</text>
+        <text x="60" y="52" class="d-t sm">&uarr; eventfulness</text>
+
+        <!-- population prior -->
+        <circle cx="265" cy="135" r="5" class="d-fill-muted"></circle>
+        <text x="276" y="128" class="d-t sm">population mean</text>
+
+        <!-- anonymous: wide -->
+        <ellipse cx="238" cy="150" rx="86" ry="58" class="d-bound"></ellipse>
+        <circle cx="238" cy="150" r="4.5" class="d-fill-warn"></circle>
+        <text x="96" y="212" class="d-t warn">anonymous &mdash; 2 votes</text>
+
+        <!-- surveyed: tight -->
+        <ellipse cx="385" cy="92" rx="30" ry="22" class="d-bound good"></ellipse>
+        <circle cx="385" cy="92" r="4.5" class="d-fill-good"></circle>
+        <text x="356" y="58" class="d-t good">surveyed &mdash; 30 votes</text>
+
+        <!-- right-hand explanation -->
+        <line x1="520" y1="30" x2="520" y2="240" class="d-line hair"></line>
+        <text x="548" y="52" class="d-t hd">ONE RECORD, EITHER WAY</text>
+        <text x="548" y="82" class="d-t">taste</text>
+        <text x="624" y="82" class="d-t sm">vector(d) &mdash; the mean</text>
+        <text x="548" y="106" class="d-t">precision</text>
+        <text x="624" y="106" class="d-t sm">how sure, per axis</text>
+        <text x="548" y="130" class="d-t">n_obs</text>
+        <text x="624" y="130" class="d-t sm">votes folded in</text>
+
+        <text x="548" y="168" class="d-t warn">anonymous</text>
+        <text x="548" y="186" class="d-t sm">prior = population</text>
+        <text x="548" y="202" class="d-t sm">wide, cheap to overturn</text>
+        <text x="548" y="228" class="d-t good">surveyed</text>
+        <text x="548" y="246" class="d-t sm">prior = their ISO answers</text>
+      </svg>
+    </div>
+    <figcaption><b>Fig. 7</b> &mdash; The join you were looking for isn&rsquo;t a translation layer between two formats. It&rsquo;s one row whose covariance happens to be large when you&rsquo;ve barely met someone. Signing up doesn&rsquo;t change the record&rsquo;s shape; it moves the prior and tightens the ellipse.</figcaption>
+  </figure>
+
+  <section class="sec">
+    <p class="sec-mark">Finding two</p>
+    <h2>The joint space is already half-built</h2>
+    <p><code>Sound.embeddings</code> is a pgvector <code>VectorField</code>, and migration <code>core/0001_initial</code> already runs <code>VectorExtension()</code>. The classifier behind it is pluggable through <code>COSOUND_SOUND_CLASSIFIER</code>, with <code>core/classify.py</code> holding a five-dimensional random stub as the fallback. Whoever wired that up was building toward exactly this and stopped one model short.</p>
+    <p>The missing half is the listener side of the same space. That is the whole idea behind <strong>latent-factor collaborative filtering</strong>: put users and items in one shared <em class="term">R<sup>d</sup></em>, and let a dot product mean &ldquo;how much does this person want this thing.&rdquo; Once a listener is a vector in the same space as a sound, votes, surveys and web activity stop being three incompatible signals. They become three different ways of getting evidence about one vector.</p>
+    <h3>Anchor the first two dimensions</h3>
+    <p>Here is where your own research folder pays off. A purely learned latent space is only identified up to rotation &mdash; the axes mean nothing, and nothing connects to anyone else&rsquo;s paper. So don&rsquo;t learn all of them. Pin dimensions 0 and 1 to the <strong>ISO 12913 circumplex</strong>, pleasantness and eventfulness, and let dimensions 2&hellip;<em>d</em> stay free and behavioural.</p>
+    <p>Those two anchored axes are the only thing in the system that fixes the coordinate frame, and <strong>only surveys and artists can write to them</strong>. Which turns out to be the actual answer to the harmony question: anonymous voters, who never fill in a survey, ride on the coordinate system that surveyed listeners establish. Their votes still move them around a plane whose orientation somebody else paid for. That is the join &mdash; not a merge of two formats, but a shared, externally-grounded frame that cheap signal can be projected into.</p>
+  </section>
+
+  <figure class="wide">
+    <div class="figwrap">
+      <svg viewBox="0 0 760 300" role="img" aria-label="Diagram of the shared vector space showing which signal writes to which dimensions, and how layer vectors average into a mix vector scored against a listener vector.">
+        <text x="0" y="12" class="d-t hd">WHAT WRITES WHERE</text>
+
+        <!-- dimension strip -->
+        <rect x="0" y="30" width="150" height="34" class="d-box k-good"></rect>
+        <text x="26" y="51" class="d-t good">dim 0 &middot; 1</text>
+        <rect x="150" y="30" width="300" height="34" class="d-box"></rect>
+        <text x="238" y="51" class="d-t">dim 2 &hellip; d</text>
+        <text x="0" y="80" class="d-t sm">ISO pleasantness / eventfulness</text>
+        <text x="150" y="80" class="d-t sm">free behavioural factors</text>
+
+        <!-- signal arrows -->
+        <path d="M60 130 L60 70" class="d-line good"></path>
+        <path d="M56 74 L60 66 L64 74 Z" class="d-head good"></path>
+        <text x="0" y="148" class="d-t good">survey at sign-up</text>
+        <text x="0" y="163" class="d-t sm">8 items &rarr; 2 coords</text>
+
+        <path d="M120 130 L120 70" class="d-line good"></path>
+        <path d="M116 74 L120 66 L124 74 Z" class="d-head good"></path>
+        <text x="96" y="188" class="d-t good">artist places</text>
+        <text x="96" y="203" class="d-t sm">at upload, in Studio</text>
+
+        <path d="M300 130 L300 70" class="d-line"></path>
+        <path d="M296 74 L300 66 L304 74 Z" class="d-head"></path>
+        <text x="240" y="148" class="d-t">votes &middot; collection &middot; mixes</text>
+        <text x="240" y="163" class="d-t sm">every listener, including anonymous</text>
+
+        <!-- credit assignment, right -->
+        <line x1="500" y1="20" x2="500" y2="280" class="d-line hair"></line>
+        <text x="528" y="12" class="d-t hd">A VOTE LANDS ON A MIX</text>
+
+        <rect x="528" y="32" width="106" height="26" class="d-box"></rect>
+        <text x="538" y="49" class="d-t sm">rain &middot; g 1.0</text>
+        <rect x="528" y="66" width="106" height="26" class="d-box"></rect>
+        <text x="538" y="83" class="d-t sm">ember &middot; g 0.6</text>
+        <rect x="528" y="100" width="106" height="26" class="d-box"></rect>
+        <text x="538" y="117" class="d-t sm">pine &middot; g 0.4</text>
+
+        <path d="M642 79 L688 79" class="d-line"></path>
+        <path d="M684 75 L692 79 L684 83 Z" class="d-head"></path>
+        <text x="646" y="70" class="d-t sm">gain-weighted mean</text>
+
+        <rect x="694" y="64" width="58" height="30" class="d-box k-good"></rect>
+        <text x="710" y="84" class="d-t good">m</text>
+
+        <path d="M723 100 L723 148" class="d-line good"></path>
+        <path d="M719 144 L723 152 L727 144 Z" class="d-head good"></path>
+
+        <rect x="596" y="156" width="156" height="30" class="d-box k-good"></rect>
+        <text x="612" y="176" class="d-t good">score = &#8249;u, m&#8250;</text>
+
+        <path d="M560 200 L560 168 L590 168" class="d-line good"></path>
+        <path d="M586 164 L594 168 L586 172 Z" class="d-head good"></path>
+        <text x="528" y="216" class="d-t">listener u</text>
+
+        <text x="528" y="250" class="d-t sm">one dot product per candidate</text>
+        <text x="528" y="266" class="d-t sm">one online update per vote</text>
+      </svg>
+    </div>
+    <figcaption><b>Fig. 8</b> &mdash; A vote points at a <code>Cosound</code>, not a <code>Sound</code>, so the credit has to be split. Treating a mix as the gain-weighted mean of its layer vectors is the cheapest defensible split, and it&rsquo;s the one your own argument already makes: a soundscape is a painting of an environment, and environments are mixtures.</figcaption>
+  </figure>
+
+  <section class="sec">
+    <p class="sec-mark">The literature</p>
+    <h2>What to take, what to leave</h2>
+    <p>Everything below is well-cited and implementable in a few hundred lines of numpy. The verdicts are about your scale &mdash; one library, a handful of players, a corpus you could hold in RAM twice over &mdash; not about the merits of the papers.</p>
+
+    <div class="lit">
+      <div class="lit-row">
+        <p class="lit-cite">Hu, Koren &amp; Volinsky, 2008<span>Collaborative Filtering for Implicit Feedback Datasets</span></p>
+        <p class="lit-what"><span class="verdict take">Take</span> &nbsp;The canonical treatment of feedback that isn&rsquo;t a star rating. Its move &mdash; separate <b>preference</b> (did they like it) from <b>confidence</b> (how sure are we) &mdash; is precisely the anonymous/surveyed distinction, already solved. Alternating least squares over your vote table is seconds of compute.</p>
+      </div>
+      <div class="lit-row">
+        <p class="lit-cite">Axelsson, Nilsson &amp; Berglund, 2010<span>A principal components model of soundscape perception &middot; codified as ISO 12913-2</span></p>
+        <p class="lit-what"><span class="verdict take">Take</span> &nbsp;The two anchored axes. This is what makes your profiles legible to other researchers instead of a private invention &mdash; the point the field notes already make. Your <code>iso12913_to_sam</code> note argues SAM is faster to collect; that&rsquo;s true, and it maps cleanly onto the same two axes, so <b>collect whichever instrument you prefer and store the projection</b>.</p>
+      </div>
+      <div class="lit-row">
+        <p class="lit-cite">Salakhutdinov &amp; Mnih, 2008<span>Bayesian Probabilistic Matrix Factorization</span></p>
+        <p class="lit-what"><span class="verdict take">Take</span> &nbsp;The justification for storing a covariance next to the mean. You do not need the full Gibbs sampler &mdash; a diagonal-covariance <b>online Bayesian linear regression</b> per listener gives you the same posterior story at the cost of one vector multiply per vote.</p>
+      </div>
+      <div class="lit-row">
+        <p class="lit-cite">Li, Chu, Langford &amp; Schapire, 2010<span>A Contextual-Bandit Approach to Personalized News Article Recommendation</span></p>
+        <p class="lit-what"><span class="verdict take">Take</span> &nbsp;Day one has no data, and the current <code>_predict_for_player</code> reaches for <code>random.choice</code> to cope. Thompson sampling is the principled version and it is <b>free once you have the covariance</b>: draw <code>u ~ N(&mu;, &Sigma;)</code>, take the argmax. Wide posterior explores, tight posterior exploits, no tuning knob.</p>
+      </div>
+      <div class="lit-row">
+        <p class="lit-cite">Masthoff, 2011<span>Group Recommendation: aggregation strategies</span></p>
+        <p class="lit-what"><span class="verdict take">Take</span> &nbsp;The room problem, surveyed. Its finding &mdash; that <b>least-misery and fairness beat averaging</b> when people share a space they can&rsquo;t leave &mdash; validates the layer design. One layer per active listener <i>is</i> the fairness strategy, realised in the audio rather than in the ranking.</p>
+      </div>
+      <div class="lit-row">
+        <p class="lit-cite">Carbonell &amp; Goldstein, 1998 &middot; Kulesza &amp; Taskar, 2012<span>Maximal Marginal Relevance &middot; Determinantal Point Processes</span></p>
+        <p class="lit-what"><span class="verdict later">Later</span> &nbsp;This is the named answer to your open question about scoring a combination. A DPP scores a <b>set</b> by relevance and internal diversity at once, which is exactly &ldquo;each layer is wanted, and together they don&rsquo;t mush.&rdquo; MMR is the two-line greedy version &mdash; ship that, and only reach for the determinant if the mixes actually sound crowded.</p>
+      </div>
+      <div class="lit-row">
+        <p class="lit-cite">Rendle et al., 2009<span>BPR: Bayesian Personalized Ranking</span></p>
+        <p class="lit-what"><span class="verdict later">Later</span> &nbsp;Pairwise ranking loss, usually stronger than pointwise on implicit data. Worth an evaluation bake-off against iALS once you have a few thousand votes, but it needs negative sampling machinery you don&rsquo;t have yet.</p>
+      </div>
+      <div class="lit-row">
+        <p class="lit-cite">Chang et al., 2020<span>Bundle Recommendation with Graph Convolutional Networks</span></p>
+        <p class="lit-what"><span class="verdict skip">Skip</span> &nbsp;The formally correct model of &ldquo;a vote on a mix, not a track.&rdquo; It also wants item counts in the tens of thousands and a GPU. The gain-weighted mean in Fig. 8 captures most of it; revisit only if layer-level credit assignment demonstrably fails.</p>
+      </div>
+      <div class="lit-row">
+        <p class="lit-cite">PANNs / VGGish / CLAP<span>pretrained audio taggers &amp; embeddings</span></p>
+        <p class="lit-what"><span class="verdict later">Later</span> &nbsp;The obvious filling for the <code>classify.py</code> stub, and it solves item cold-start without waiting for votes. But it is a heavyweight dependency in a container that currently has none, and <b>an artist placing their own recording on the circumplex at upload is better data and one afternoon of work</b>. Do that first; add the model when the catalogue outgrows hand-placement.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <p class="sec-mark">Feasibility</p>
+    <h2>What this costs you in Django</h2>
+    <p>Less than you&rsquo;d think, because the seams are already cut. <code>COSOUND_CORE_PREDICTOR</code> is a documented settings hook resolved through <code>import_string</code>, with the intended value sitting commented out at the bottom of <code>settings.py</code>. Nothing below requires Celery, Redis, a vector database or a training pipeline. It is one migration, one task module, and a predictor swap.</p>
+
+    <h3>The migration</h3>
+    <div class="spec">
+      <table>
+        <thead>
+          <tr><th>Model</th><th>Field</th><th>Type</th><th>Why</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Listener</td><td>taste</td><td>VectorField(d)</td><td class="note">The posterior mean. The profile itself.</td></tr>
+          <tr><td>Listener</td><td>precision</td><td>VectorField(d)</td><td class="note">Diagonal covariance. The certainty half &mdash; what separates an anonymous listener from a surveyed one.</td></tr>
+          <tr><td>Listener</td><td>n_obs</td><td>IntegerField</td><td class="note">Votes folded in. Cheap sanity check and a decay clock.</td></tr>
+          <tr><td>Listener</td><td>surveyed_at</td><td>DateTimeField(null)</td><td class="note">Null means the anchored dims came from the population prior, not from them.</td></tr>
+          <tr><td>Sound</td><td>iso_pleasant</td><td>FloatField(null)</td><td class="note">Artist-placed at upload. Writes dim 0.</td></tr>
+          <tr><td>Sound</td><td>iso_eventful</td><td>FloatField(null)</td><td class="note">Artist-placed at upload. Writes dim 1.</td></tr>
+          <tr><td>Survey</td><td>&mdash; new model &mdash;</td><td>listener, cosound, 8 items</td><td class="note">Rates the mix in the air. Supervises the listener <em>and</em> the sounds in it &mdash; the only signal that does both.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>One caution: <code>VectorField</code> bakes its dimension into the migration, and <code>sound_dimension</code> is currently <code>5</code>. Pick the final <em>d</em> now &mdash; 16 is comfortable at this catalogue size, with 0 and 1 spoken for &mdash; because changing it later means a rewrite of every stored vector.</p>
+
+    <h3>The write path</h3>
+    <p>A vote already has everything the update needs. Keep it off the request: you spent the whole project buying back milliseconds, so the view enqueues and returns.</p>
+    <div class="code">
+      <cite>app/taste.py &mdash; sketch</cite>
+      <pre><span class="cm"># One Bayesian ridge step. Diagonal covariance, so it's elementwise.</span>
+<span class="kw">@task</span>
+<span class="kw">def</span> fold_vote(vote_id: int) -&gt; <span class="kw">None</span>:
+    vote = Vote.objects.select_related(<span class="cm">"voter"</span>).get(pk=vote_id)
+    m    = mix_vector(vote.cosound)      <span class="cm"># gain-weighted mean of layers</span>
+    u, p = vote.voter.taste, vote.voter.precision
+    y    = <span class="cm">1.0</span> <span class="kw">if</span> vote.value == Vote.UPVOTE <span class="kw">else</span> <span class="cm">-1.0</span>
+
+    p_new = p + m * m                    <span class="cm"># certainty only ever grows</span>
+    u_new = (p * u + m * y) / p_new      <span class="cm"># evidence pulls the mean</span>
+
+    Listener.objects.filter(pk=vote.voter_id).update(
+        taste=u_new, precision=p_new, n_obs=F(<span class="cm">"n_obs"</span>) + <span class="cm">1</span>
+    )</pre>
+    </div>
+    <p>Anchored dimensions get a high starting precision for surveyed listeners and a low one for everyone else. That single number is the entire mechanism by which a survey outranks a tap without either signal needing a special code path.</p>
+
+    <h3>The read path</h3>
+    <p>Replace the tag-mode heuristic in <code>_predict_for_player</code> and point <code>COSOUND_CORE_PREDICTOR</code> at the new one. The shape stays identical &mdash; still one layer per active listener, still returning a <code>Prediction</code> for <code>player.update()</code> &mdash; so the player, the API and the vote carousel need no changes at all.</p>
+    <div class="code">
+      <cite>app/predict.py &mdash; replacing core.predict.random_predictor</cite>
+      <pre><span class="kw">for</span> listener <span class="kw">in</span> Vote.get_listeners(Vote.recent(player, minutes=<span class="cm">5</span>)):
+    u = sample(listener.taste, listener.precision)   <span class="cm"># Thompson</span>
+    <span class="cm"># pgvector does the ranking in the database</span>
+    pick = (player.sounds
+        .exclude(pk__in=chosen)
+        .order_by(MaxInnerProduct(<span class="cm">"embeddings"</span>, u))
+        .first())
+    <span class="kw">if</span> pick <span class="kw">and</span> marginal_gain(pick, chosen) &gt; floor:   <span class="cm"># MMR</span>
+        prediction.add_layer(pick.pk, gain=<span class="cm">1.0</span>)</pre>
+    </div>
+    <p>The nightly refit &mdash; iALS across the whole vote table to re-seat both sides of the space &mdash; is one more <code>@task</code> on the same <code>db_worker</code> that already sends your login emails. At a few thousand votes it is a couple of seconds of numpy. This is the part worth saying plainly: <strong>your scale is small enough that the honest engineering answer is a numpy function in a database-backed task queue</strong>, and reaching for anything heavier would be the mistake.</p>
+  </section>
+
+  <section class="sec">
+    <p class="sec-mark open">Three things in the way</p>
+    <h2>Found while reading</h2>
+    <p>None of these are modelling problems, and all three will bite the profile work if they aren&rsquo;t cleared first.</p>
+
+    <div class="flags">
+      <div class="flag">
+        <h4>The 400 ms gap is a scheduling problem, not an algorithm problem</h4>
+        <p>Fig. 4 blames the soundscape&rsquo;s gradualness, but the delay is in the plumbing. <code>refresh</code> sleeps <code>REFRESH_INTERVAL_SECONDS = 30</code> between passes, and <code>/api/cosound</code> is throttled to <code>10/m</code> &mdash; a 6-second poll ceiling. Worst case from tap to audible layer is roughly <b>36 seconds</b>, and no predictor will fix that. Enqueue the prediction from <code>submit_vote</code> on the vote itself, and keep the 30-second sweep as a decay floor. The receipt the field notes want depends on this more than on anything in this memo.</p>
+      </div>
+      <div class="flag">
+        <h4>There is no path from an anonymous account to a real one</h4>
+        <p><code>login_anonymously</code> mints a fresh <code>User</code>; <code>check_email</code> mints a different one. Nothing grafts the first onto the second, so a listener who taps for three weeks and then signs up <b>silently discards every vote they cast</b> &mdash; the exact population whose profile is most worth keeping. In posterior terms the merge is free: the anonymous posterior becomes the named account&rsquo;s prior. In code it doesn&rsquo;t exist yet. This is the single highest-value gap on the list.</p>
+      </div>
+      <div class="flag">
+        <h4>Classification runs at the wrong moment</h4>
+        <p><code>Sound.save()</code> calls <code>classifier(self.pk)</code> when <code>embeddings is None</code> &mdash; but on a first save the pk is still <code>None</code>, and the file hasn&rsquo;t been committed to storage. The random stub doesn&rsquo;t care, so it passes today and will fail the moment a real classifier wants to open the audio. Move it to a post-save <code>@task</code> before you replace the stub, not after.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <p class="sec-mark">Build order</p>
+    <h2>What blocks what</h2>
+    <p>These are numbered because they genuinely depend on one another, not for tidiness. Steps 1&ndash;3 are the unblock; everything after is improvement you can sequence freely.</p>
+
+    <div class="steps">
+      <div class="step">
+        <h4>Fix the anonymous-to-named graft</h4>
+        <p>Before any profile is worth accumulating, it has to survive sign-up. Small, self-contained, and independent of every modelling decision below.</p>
+      </div>
+      <div class="step">
+        <h4>Settle <em>d</em> and add the listener vector</h4>
+        <p>One migration: <code>taste</code>, <code>precision</code>, <code>n_obs</code>, <code>surveyed_at</code>, plus the two ISO floats on <code>Sound</code>. Painful to change later, trivial now.</p>
+      </div>
+      <div class="step">
+        <h4>Put the circumplex in the upload form</h4>
+        <p><code>SoundForm</code> already carries <code>file, title, artist, set, art, flavor, tags</code>. Two more fields, and item cold-start is solved by the people who made the recordings &mdash; no audio model required.</p>
+      </div>
+      <div class="step">
+        <h4>Fold votes into the posterior</h4>
+        <p>The <code>fold_vote</code> task, enqueued from <code>submit_vote</code>. From here every listener, anonymous or not, has a real profile that improves with use.</p>
+      </div>
+      <div class="step">
+        <h4>Swap the predictor and enqueue on vote</h4>
+        <p>Point <code>COSOUND_CORE_PREDICTOR</code> at the vector version, and fire prediction from the vote rather than waiting for the sweep. This is where the tap starts sounding like it did something.</p>
+      </div>
+      <div class="step">
+        <h4>Add the survey at sign-up</h4>
+        <p>Rating the mix already in the air, per the field notes. It supervises both sides of the space at once, and it&rsquo;s what keeps the anchored axes honest for everyone else.</p>
+      </div>
+      <div class="step">
+        <h4>Nightly iALS refit, then MMR on the stack</h4>
+        <p>Re-seat the free dimensions from the full vote history; add marginal-relevance scoring only once mixes start sounding crowded.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <p class="sec-mark">Still open</p>
+    <h2>What this doesn&rsquo;t settle</h2>
+    <ul class="plain">
+      <li><b>The instrument.</b> Your SAM note prefers three fast pictographic scales; ISO&rsquo;s eight items are what the comparison literature is built on. Either works with the anchored design, because both reduce to the same two coordinates &mdash; but pick one before collecting, since a mid-study switch invalidates the anchor.</li>
+      <li><b>Whether gains carry preference.</b> The mix vector treats gain as a mixing weight. It may also be a signal in its own right &mdash; someone pulling a layer down is telling you something the vote value doesn&rsquo;t.</li>
+      <li><b>The 60-second vote throttle.</b> <code>VOTE_THROTTLE_SECONDS</code> caps a listener at one observation a minute. Fine for abuse control, but it sets a hard ceiling on how fast a profile can converge in a single sitting &mdash; worth revisiting once posteriors exist to watch.</li>
+      <li><b><code>Vote.section</code> is recorded and unused.</b> Where someone sat is already on every row. Nothing in this memo reads it, and a per-spot model of the room is the obvious next thing it unlocks.</li>
+    </ul>
+  </section>
+
+  <div class="coda">
+    <p class="coda-h">The short version</p>
+    <p>The roadblock as written &mdash; two voter types, one representation &mdash; dissolves once you notice both are already the same row. What&rsquo;s actually missing is a listener vector next to the sound vector you already have, a covariance to say how much you trust it, and two dimensions anchored to a standard so the space means something outside this project. The rest is scheduling.</p>
+  </div>
+
+</div>

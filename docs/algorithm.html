@@ -1,0 +1,580 @@
+<title>Why Nobody Voted</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,300..800&family=Newsreader:ital,opsz,wght@0,6..72,200..700;1,6..72,300..500&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --ground:   #ECEEEA;
+    --surface:  #F6F7F4;
+    --surface-2:#E2E5E0;
+    --ink:      #16201D;
+    --muted:    #5B6763;
+    --rule:     #CFD5CE;
+    --oxide:    #A8452D;
+    --teal:     #0E6F6C;
+    --shadow:   0 1px 0 rgba(22,32,29,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:   #121715;
+      --surface:  #1A211E;
+      --surface-2:#232B27;
+      --ink:      #E3E8E3;
+      --muted:    #93A09A;
+      --rule:     #2E3833;
+      --oxide:    #E08063;
+      --teal:     #45B7B1;
+      --shadow:   0 1px 0 rgba(0,0,0,.3);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:   #121715;
+    --surface:  #1A211E;
+    --surface-2:#232B27;
+    --ink:      #E3E8E3;
+    --muted:    #93A09A;
+    --rule:     #2E3833;
+    --oxide:    #E08063;
+    --teal:     #45B7B1;
+    --shadow:   0 1px 0 rgba(0,0,0,.3);
+  }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "Newsreader", Georgia, "Times New Roman", serif;
+    font-size: 19px;
+    line-height: 1.62;
+    font-optical-sizing: auto;
+    -webkit-font-smoothing: antialiased;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  .page {
+    display: grid;
+    grid-template-columns:
+      [full-start] minmax(1.25rem, 1fr)
+      [wide-start] minmax(0, 9rem)
+      [text-start] min(40rem, 100% - 2.5rem) [text-end]
+      minmax(0, 9rem) [wide-end]
+      minmax(1.25rem, 1fr) [full-end];
+    row-gap: 1.3rem;
+    padding: 0 0 5rem;
+  }
+  .page > * { grid-column: text; }
+  .page > .wide { grid-column: wide; }
+
+  .lede { padding: 4rem 0 .6rem; }
+  .eyebrow {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .715rem; font-weight: 500;
+    letter-spacing: .14em; text-transform: uppercase;
+    color: var(--muted); margin: 0 0 1.4rem;
+  }
+  .eyebrow .dot { color: var(--rule); padding: 0 .35em; }
+  h1 {
+    font-family: "Bricolage Grotesque", "Helvetica Neue", sans-serif;
+    font-weight: 800; font-variation-settings: "wdth" 88;
+    font-size: clamp(2.7rem, 8vw, 4.4rem);
+    line-height: .96; letter-spacing: -.02em;
+    text-wrap: balance; margin: 0 0 1.1rem;
+  }
+  .dek {
+    font-size: 1.24rem; line-height: 1.45; color: var(--muted);
+    max-width: 32ch; margin: 0 0 1.9rem; font-weight: 300;
+  }
+  .byline {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .74rem; color: var(--muted); line-height: 1.7;
+    border-top: 1px solid var(--rule); padding-top: .9rem; margin: 0;
+  }
+
+  p { margin: 0; }
+  strong { font-weight: 600; }
+
+  .drop::first-letter {
+    font-family: "Bricolage Grotesque", sans-serif;
+    font-weight: 700; font-size: 3.1rem; line-height: .8;
+    float: left; padding: .12em .1em 0 0; color: var(--oxide);
+  }
+
+  .quote {
+    font-family: "Bricolage Grotesque", sans-serif;
+    font-weight: 500; font-variation-settings: "wdth" 90;
+    font-size: clamp(1.5rem, 3.4vw, 2rem); line-height: 1.18;
+    letter-spacing: -.015em;
+    border-left: 3px solid var(--oxide);
+    padding: .3rem 0 .3rem 1.4rem;
+    margin: 1.1rem 0 .4rem;
+    text-wrap: balance;
+  }
+
+  figure { margin: 1.7rem 0 1.2rem; display: grid; gap: .85rem; }
+  figure svg { width: 100%; min-width: 720px; height: auto; display: block; }
+  .figwrap {
+    overflow-x: auto; background: var(--surface);
+    border: 1px solid var(--rule); border-radius: 3px;
+    padding: 1.15rem 1rem; box-shadow: var(--shadow);
+  }
+  figcaption {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .755rem; line-height: 1.65; color: var(--muted); max-width: 60ch;
+  }
+  figcaption b { color: var(--ink); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; font-size: .93em; }
+
+  .d-box   { fill: var(--surface-2); stroke: var(--rule); stroke-width: 1; }
+  .d-box.k-warn { stroke: var(--oxide); }
+  .d-box.k-good { stroke: var(--teal); stroke-width: 1.6; }
+  .d-bound { fill: none; stroke: var(--oxide); stroke-width: 1; stroke-dasharray: 5 4; }
+  .d-bound.good { stroke: var(--teal); }
+  .d-t     { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11.5px; fill: var(--ink); }
+  .d-t.sm  { font-size: 10px; fill: var(--muted); }
+  .d-t.hd  { font-size: 11px; font-weight: 600; letter-spacing: .12em; fill: var(--muted); }
+  .d-t.warn{ fill: var(--oxide); }
+  .d-t.good{ fill: var(--teal); }
+  .d-line  { fill: none; stroke: var(--ink); stroke-width: 2.2; }
+  .d-line.weak { stroke: var(--oxide); stroke-width: 1.4; stroke-dasharray: 4 4; }
+  .d-line.good { stroke: var(--teal); stroke-width: 1.8; }
+  .d-line.hair { stroke: var(--rule); stroke-width: 1; }
+  .d-head  { fill: var(--ink); }
+  .d-head.warn { fill: var(--oxide); }
+  .d-head.good { fill: var(--teal); }
+
+  .sec {
+    border-top: 1px solid var(--rule);
+    margin-top: 1.8rem; padding-top: 2.6rem;
+    display: grid; gap: .55rem;
+  }
+  .sec-mark {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .715rem; font-weight: 600;
+    letter-spacing: .14em; text-transform: uppercase;
+    color: var(--teal); margin: 0;
+  }
+  h2 {
+    font-family: "Bricolage Grotesque", "Helvetica Neue", sans-serif;
+    font-weight: 700; font-variation-settings: "wdth" 92;
+    font-size: clamp(1.85rem, 4vw, 2.4rem);
+    line-height: 1.05; letter-spacing: -.018em;
+    text-wrap: balance; margin: 0;
+  }
+
+  .coda {
+    border-top: 1px solid var(--rule);
+    margin-top: 1.6rem; padding-top: 1.3rem;
+    display: grid; gap: .5rem;
+  }
+  .coda-h {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .72rem; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--oxide); display: flex; align-items: center; gap: .5rem;
+  }
+  .coda-h::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--oxide); }
+  .coda p { font-size: 1rem; color: var(--muted); }
+
+  :focus-visible { outline: 2px solid var(--teal); outline-offset: 3px; }
+
+  @media (max-width: 34rem) {
+    body { font-size: 18px; }
+    .lede { padding-top: 2.6rem; }
+    .figwrap { padding: .8rem .7rem; }
+    .dek { max-width: none; }
+  }
+</style>
+
+<article class="page">
+
+  <header class="lede">
+    <p class="eyebrow">CoSounds<span class="dot">/</span>Mindful Listening Space<span class="dot">/</span>Field notes</p>
+    <h1>Why Nobody Voted</h1>
+    <p class="dek">The soundscapes were great. The room couldn&rsquo;t hear anybody. We fixed that, and found a harder problem underneath.</p>
+    <p class="byline">Working notes, spoken out loud and written down.<br>Three stages so far. The prediction layer is still being recorded.</p>
+  </header>
+
+  <p class="drop">Let&rsquo;s go back to the very beginning, before any of our code existed.</p>
+
+  <p>Dr. Michael Frishkopf&rsquo;s Mindful Listening Spaces in Cameron Library play designed soundscapes for whoever&rsquo;s sitting in the room, and the whole point is that the room <em>listens back</em> &mdash; there was a voting mechanism so people could tell the system what was working. And I want to be clear about this up front: the part that plays the sound is genuinely good. Robust, well built, the soundscapes sound amazing. The problem was everything wrapped around it.</p>
+
+  <p>You voted with a QR code, or with a tablet up by the door. The form itself was hosted locally, at a specific address on the university network, so if you were on data it just didn&rsquo;t work. And what actually happened was that <strong>almost nobody voted.</strong> That&rsquo;s fatal, because the entire premise is that the soundscape adapts to the people who are actually in the room. If nobody votes, it isn&rsquo;t adapting to anyone. It&rsquo;s just playing.</p>
+
+  <p class="quote">The system was fine. The loop was open.</p>
+
+  <figure class="wide">
+    <div class="figwrap">
+      <svg viewBox="0 0 900 320" role="img" aria-label="The original loop: sound reaches the room reliably along a solid path, while the vote path back runs through a QR code, a phone camera, a browser and a campus-network-only form, and mostly does not complete.">
+        <defs>
+          <marker id="f1h" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-head"/></marker>
+          <marker id="f1w" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-head warn"/></marker>
+        </defs>
+
+        <rect class="d-bound" x="574" y="28" width="202" height="274" rx="4"/>
+        <text class="d-t sm warn" x="574" y="20">campus network only</text>
+
+        <rect class="d-box" x="30" y="128" width="130" height="76" rx="4"/>
+        <text class="d-t" x="95" y="160" text-anchor="middle">Someone</text>
+        <text class="d-t" x="95" y="177" text-anchor="middle">in the room</text>
+
+        <rect class="d-box k-warn" x="200" y="46" width="160" height="54" rx="4"/>
+        <text class="d-t" x="280" y="69" text-anchor="middle">QR poster</text>
+        <text class="d-t sm" x="280" y="86" text-anchor="middle">or the door tablet</text>
+
+        <rect class="d-box k-warn" x="400" y="46" width="150" height="54" rx="4"/>
+        <text class="d-t" x="475" y="69" text-anchor="middle">Camera, aim,</text>
+        <text class="d-t sm" x="475" y="86" text-anchor="middle">tap, wait, browser</text>
+
+        <rect class="d-box k-warn" x="590" y="46" width="170" height="54" rx="4"/>
+        <text class="d-t" x="675" y="69" text-anchor="middle">Vote form</text>
+        <text class="d-t sm" x="675" y="86" text-anchor="middle">hosted on the LAN</text>
+
+        <rect class="d-box" x="590" y="232" width="170" height="54" rx="4"/>
+        <text class="d-t" x="675" y="255" text-anchor="middle">Playback machine</text>
+        <text class="d-t sm" x="675" y="272" text-anchor="middle">decides and plays</text>
+
+        <rect class="d-box" x="400" y="232" width="150" height="54" rx="4"/>
+        <text class="d-t" x="475" y="264" text-anchor="middle">Speakers</text>
+
+        <polyline class="d-line weak" points="95,128 95,73 194,73" marker-end="url(#f1w)"/>
+        <text class="d-t sm warn" x="104" y="112">wants to say something</text>
+        <line class="d-line weak" x1="360" y1="73" x2="394" y2="73" marker-end="url(#f1w)"/>
+        <line class="d-line weak" x1="550" y1="73" x2="584" y2="73" marker-end="url(#f1w)"/>
+        <line class="d-line weak" x1="675" y1="100" x2="675" y2="226" marker-end="url(#f1w)"/>
+        <text class="d-t sm warn" x="686" y="168">if it ever got this far</text>
+
+        <line class="d-line" x1="590" y1="259" x2="556" y2="259" marker-end="url(#f1h)"/>
+        <polyline class="d-line" points="400,259 95,259 95,210" marker-end="url(#f1h)"/>
+        <text class="d-t sm" x="248" y="280" text-anchor="middle">the soundscape &mdash; this half always worked</text>
+      </svg>
+    </div>
+    <figcaption><b>Fig. 1</b> &mdash; Sound came out of the room reliably. Getting an opinion back <em>into</em> it meant crossing a camera, a browser and a network boundary, so it mostly didn&rsquo;t happen.</figcaption>
+  </figure>
+
+  <p>So that&rsquo;s where we come in, and we didn&rsquo;t start with the audio, because the audio wasn&rsquo;t broken. We started with the two things standing between a person and a vote.</p>
+
+  <p>The first is that <strong>a QR code is a high-friction door.</strong> Unlock the phone, open the camera, aim it, hold still while it focuses, spot the little banner, tap the banner, wait for the browser, wait for the page &mdash; six things before the thing. And there&rsquo;s a cost that doesn&rsquo;t show up in a step count at all: pointing a camera at something in a room full of strangers is socially awkward. People look up. Somebody might think you&rsquo;re recording them. In a quiet shared study space, that&rsquo;s real. So we replaced the entry interaction with <strong>NFC tags</strong> &mdash; stick one on every desk, tap it, and the interface pulls itself up. No camera, no aiming, no banner. And the placement matters as much as the interaction: a poster by the door is something you have to get up and walk to, while a tag on the desk is already in arm&rsquo;s reach of the person whose opinion we actually want.</p>
+
+  <p>The second problem was structural, and it was the bigger one. You had to be on the university network to reach the interface at all &mdash; a hard filter on who&rsquo;s even <em>allowed</em> to participate, and it filters out exactly the casual five-second participation you&rsquo;re trying to encourage. Underneath that, the votes were wired more or less directly into the machine that handled playback, so the piece that has to be rock-solid was sharing a home with the piece that&rsquo;s exposed to the public and needs to change constantly.</p>
+
+  <p>So we built <strong>one central server, hosted on the internet.</strong> Not on campus, not on a particular Wi-Fi &mdash; just on the internet, where a phone on cell data can reach it from the third floor of a library without thinking about it. That server collects the votes, <em>and</em> it decides what plays. Which means the thing in the room gets much dumber on purpose: one piece of software installed on the hardware that&rsquo;s wired to the speakers, and it doesn&rsquo;t decide anything. It asks. It makes HTTP calls out to the server &mdash; <em>what should I be playing right now?</em> &mdash; and plays the answer. Every NFC tag gets its own URL, programmed to cast a vote for one particular player, so a tap isn&rsquo;t just &ldquo;a vote,&rdquo; it&rsquo;s &ldquo;a vote for <em>this</em> room, on <em>this</em> player, right now.&rdquo; The prediction now lives in the same place as the votes it&rsquo;s predicting from, which is the entire point.</p>
+
+  <figure class="wide">
+    <div class="figwrap">
+      <svg viewBox="0 0 900 452" role="img" aria-label="Before and after architecture. Before: the vote form and the playback machine both sit inside the campus network, votes wired straight into playback, and a phone on cell data is blocked at the boundary. After: NFC tag to phone on any network, posting a vote to a central server on the internet, while the player in the room polls that same server over HTTP and drives the speakers.">
+        <defs>
+          <marker id="f2h" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-head"/></marker>
+          <marker id="f2w" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-head warn"/></marker>
+          <marker id="f2g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-head good"/></marker>
+        </defs>
+
+        <text class="d-t hd warn" x="24" y="22">BEFORE</text>
+
+        <rect class="d-bound" x="200" y="40" width="470" height="124" rx="4"/>
+        <text class="d-t sm warn" x="212" y="58">university network</text>
+
+        <rect class="d-box" x="24" y="86" width="150" height="56" rx="4"/>
+        <text class="d-t" x="99" y="109" text-anchor="middle">Phone,</text>
+        <text class="d-t sm" x="99" y="126" text-anchor="middle">on cell data</text>
+
+        <line class="d-line weak" x1="174" y1="114" x2="196" y2="114"/>
+        <line class="d-line weak" x1="180" y1="106" x2="192" y2="122"/>
+        <line class="d-line weak" x1="192" y1="106" x2="180" y2="122"/>
+        <text class="d-t sm warn" x="196" y="78" text-anchor="end">blocked</text>
+
+        <rect class="d-box k-warn" x="222" y="86" width="150" height="56" rx="4"/>
+        <text class="d-t" x="297" y="109" text-anchor="middle">Vote form</text>
+        <text class="d-t sm" x="297" y="126" text-anchor="middle">local address</text>
+
+        <rect class="d-box k-warn" x="422" y="86" width="210" height="56" rx="4"/>
+        <text class="d-t" x="527" y="109" text-anchor="middle">Playback machine</text>
+        <text class="d-t sm" x="527" y="126" text-anchor="middle">decides AND plays</text>
+
+        <line class="d-line weak" x1="372" y1="114" x2="416" y2="114" marker-end="url(#f2w)"/>
+        <text class="d-t sm warn" x="394" y="78" text-anchor="middle">wired in</text>
+
+        <rect class="d-box" x="716" y="86" width="150" height="56" rx="4"/>
+        <text class="d-t" x="791" y="118" text-anchor="middle">Speakers</text>
+        <line class="d-line" x1="632" y1="114" x2="710" y2="114" marker-end="url(#f2h)"/>
+
+        <line class="d-line hair" x1="24" y1="196" x2="876" y2="196"/>
+
+        <text class="d-t hd good" x="24" y="238">AFTER</text>
+
+        <rect class="d-box k-good" x="24" y="272" width="130" height="56" rx="4"/>
+        <text class="d-t" x="89" y="295" text-anchor="middle">NFC tag</text>
+        <text class="d-t sm" x="89" y="312" text-anchor="middle">on the desk</text>
+
+        <line class="d-line good" x1="154" y1="300" x2="188" y2="300" marker-end="url(#f2g)"/>
+        <text class="d-t sm good" x="171" y="290" text-anchor="middle">tap</text>
+
+        <rect class="d-box" x="194" y="272" width="150" height="56" rx="4"/>
+        <text class="d-t" x="269" y="295" text-anchor="middle">Phone</text>
+        <text class="d-t sm" x="269" y="312" text-anchor="middle">any network</text>
+
+        <line class="d-line good" x1="344" y1="300" x2="378" y2="300" marker-end="url(#f2g)"/>
+        <text class="d-t sm good" x="361" y="290" text-anchor="middle">vote</text>
+
+        <rect class="d-box k-good" x="384" y="252" width="240" height="108" rx="4"/>
+        <text class="d-t" x="504" y="282" text-anchor="middle">CoSounds server</text>
+        <text class="d-t sm" x="504" y="303" text-anchor="middle">on the internet</text>
+        <text class="d-t sm" x="504" y="322" text-anchor="middle">votes &middot; accounts &middot; history</text>
+        <text class="d-t sm" x="504" y="341" text-anchor="middle">decides what plays next</text>
+
+        <line class="d-line good" x1="630" y1="288" x2="654" y2="288" marker-start="url(#f2g)"/>
+        <line class="d-line good" x1="630" y1="312" x2="654" y2="312" marker-end="url(#f2g)"/>
+        <text class="d-t sm good" x="642" y="242" text-anchor="middle">&ldquo;what should I play?&rdquo; &mdash; over HTTP</text>
+
+        <rect class="d-box" x="660" y="272" width="150" height="56" rx="4"/>
+        <text class="d-t" x="735" y="295" text-anchor="middle">Player software</text>
+        <text class="d-t sm" x="735" y="312" text-anchor="middle">plays, decides nothing</text>
+
+        <line class="d-line" x1="735" y1="328" x2="735" y2="368" marker-end="url(#f2h)"/>
+        <rect class="d-box" x="660" y="374" width="150" height="52" rx="4"/>
+        <text class="d-t" x="735" y="405" text-anchor="middle">Speakers</text>
+      </svg>
+    </div>
+    <figcaption><b>Fig. 2</b> &mdash; The one edge that moved. The decision used to live on the same machine as the audio, behind a boundary that excluded half the room. Now it sits next to the votes on a public server, and the machine in the room just asks and plays.</figcaption>
+  </figure>
+
+  <p>It also means we get accounts, which matters less for the login screen than for <strong>history</strong>. Without one, a vote is a one-shot anonymous event: the counter goes up, the session ends, the person evaporates, and the system meets everyone for the first time every time. With one, the same taps accumulate into a profile and preferences build up over time &mdash; and you can&rsquo;t personalize anything for someone the system has never met.</p>
+
+  <div class="sec">
+    <p class="sec-mark">Stage two</p>
+    <h2>The second tap</h2>
+  </div>
+
+  <p>So: the server&rsquo;s up, the tags are out, there&rsquo;s an admin panel, and things are going well. Before I get to what broke, there&rsquo;s a good thing that fell out of the architecture.</p>
+
+  <p>Because the player is just software making HTTP calls to our server, there&rsquo;s nothing stopping us from running more than one of them. And that&rsquo;s exactly what we did. Every tag is programmed with its own URL carrying a player token and a vote value, so when somebody taps, the server knows which player they voted at &mdash; and therefore what was playing at that second, without the tag ever having to say anything about the sound. You can push more into that URL, too. Put the tag&rsquo;s position in the room in it, and now you can tell the person at the window table from the person up on the second floor.</p>
+
+  <p>So we&rsquo;re not building software for one room anymore. One central server can run a fleet of them, and every vote arrives carrying a room, a spot inside that room, a timestamp, and the sound that was playing when it happened. That&rsquo;s a lot of structure for something that costs one tap &mdash; and it&rsquo;s what makes the real data analysis possible later, because taps in one room are probably going to look a lot like taps in another, and eventually you train on all of it.</p>
+
+  <figure class="wide">
+    <div class="figwrap">
+      <svg viewBox="0 0 900 244" role="img" aria-label="A tap carries three things in the tag's URL: player token, vote value, and position in the room. The server turns that into a full record, adding the timestamp and the sound that was playing, which it already knew. The same server runs many rooms.">
+        <defs>
+          <marker id="f3h" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-head"/></marker>
+          <marker id="f3g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-head good"/></marker>
+        </defs>
+
+        <text class="d-t hd good" x="24" y="20">WHAT ONE TAP CARRIES</text>
+
+        <rect class="d-box k-good" x="24" y="34" width="320" height="118" rx="4"/>
+        <text class="d-t sm" x="40" y="58">cosounds.app/t/ &hellip;</text>
+        <line class="d-line hair" x1="40" y1="68" x2="328" y2="68"/>
+        <text class="d-t" x="40" y="92">p = 8f2a</text>
+        <text class="d-t sm" x="328" y="92" text-anchor="end">which player</text>
+        <text class="d-t" x="40" y="116">v = up</text>
+        <text class="d-t sm" x="328" y="116" text-anchor="end">the vote</text>
+        <text class="d-t" x="40" y="140">s = 2f-win</text>
+        <text class="d-t sm" x="328" y="140" text-anchor="end">where in the room</text>
+
+        <line class="d-line good" x1="344" y1="93" x2="392" y2="93" marker-end="url(#f3g)"/>
+        <text class="d-t sm good" x="368" y="84" text-anchor="middle">tap</text>
+
+        <rect class="d-box k-good" x="398" y="62" width="176" height="62" rx="4"/>
+        <text class="d-t" x="486" y="98" text-anchor="middle">CoSounds server</text>
+
+        <line class="d-line" x1="574" y1="93" x2="622" y2="93" marker-end="url(#f3h)"/>
+        <text class="d-t sm" x="598" y="84" text-anchor="middle">writes</text>
+
+        <rect class="d-box" x="628" y="24" width="248" height="184" rx="4"/>
+        <text class="d-t hd" x="644" y="46">THE ROW IT WRITES</text>
+        <text class="d-t" x="644" y="72">room</text>
+        <text class="d-t" x="860" y="72" text-anchor="end">Cameron, 2F</text>
+        <text class="d-t" x="644" y="94">spot</text>
+        <text class="d-t" x="860" y="94" text-anchor="end">window table</text>
+        <text class="d-t" x="644" y="116">vote</text>
+        <text class="d-t" x="860" y="116" text-anchor="end">thumbs up</text>
+        <line class="d-line hair" x1="644" y1="132" x2="860" y2="132"/>
+        <text class="d-t sm" x="644" y="148">the server already knew these</text>
+        <text class="d-t" x="644" y="172">at</text>
+        <text class="d-t" x="860" y="172" text-anchor="end">14:02:31</text>
+        <text class="d-t" x="644" y="194">sound</text>
+        <text class="d-t" x="860" y="194" text-anchor="end">Rainfall, 4:12 in</text>
+
+        <rect class="d-box k-good" x="398" y="168" width="52" height="32" rx="3"/>
+        <text class="d-t sm" x="424" y="188" text-anchor="middle">room</text>
+        <rect class="d-box k-good" x="460" y="168" width="52" height="32" rx="3"/>
+        <text class="d-t sm" x="486" y="188" text-anchor="middle">room</text>
+        <rect class="d-box k-good" x="522" y="168" width="52" height="32" rx="3"/>
+        <text class="d-t sm" x="548" y="188" text-anchor="middle">room</text>
+        <line class="d-line good" x1="424" y1="166" x2="424" y2="130" marker-end="url(#f3g)"/>
+        <line class="d-line good" x1="486" y1="166" x2="486" y2="130" marker-end="url(#f3g)"/>
+        <line class="d-line good" x1="548" y1="166" x2="548" y2="130" marker-end="url(#f3g)"/>
+        <text class="d-t sm good" x="486" y="222" text-anchor="middle">one server, as many rooms as you install players in</text>
+      </svg>
+    </div>
+    <figcaption><b>Fig. 3</b> &mdash; The tag only carries three things. The server fills in the rest, because it&rsquo;s the one that decided what was playing in the first place.</figcaption>
+  </figure>
+
+  <p>That&rsquo;s the good news. Here&rsquo;s what we ran into.</p>
+
+  <p><strong>Incentive.</strong> Our original diagnosis was friction: nobody voted because voting was hard. I still think that was right, and I think it was the main reason. But once you clear the friction away, you find a second obstacle that was hiding behind it, and that one is incentive. Easy doesn&rsquo;t mean motivated. Why would anybody tap?</p>
+
+  <p>Here&rsquo;s what I&rsquo;m confident about, and I want this part to be really clear: <strong>the first tap is basically guaranteed.</strong> A brand-new user will tap once out of pure curiosity &mdash; especially if the cards are actually designed. Not a blank black-or-white NFC sticker: our logo, real artwork, something that makes you want to know what the thing does. Tap number one you can count on.</p>
+
+  <p>Tap number two is the entire problem. Even if we&rsquo;ve explained how the system works, how does anyone know that it <em>is</em> working? They tap, and then &mdash; what? Nothing tells them their input did anything to the room around them.</p>
+
+  <p>There&rsquo;s a thing called the Doherty Threshold, which I first ran into watching <em>Halt and Catch Fire</em>: a system has to respond in under 400 milliseconds for a person to stay engaged with it. A room full of speakers isn&rsquo;t a terminal, so I&rsquo;m not saying we swap the soundscape in 400 milliseconds &mdash; we shouldn&rsquo;t, the whole aesthetic is that it moves gradually. But <em>something</em> has to come back fast, and it has to be perceptible, and what it has to say is: your tap changed this place. You matter.</p>
+
+  <figure class="wide">
+    <div class="figwrap">
+      <svg viewBox="0 0 900 250" role="img" aria-label="A timeline from the moment of the tap. The first 400 milliseconds are the engagement window, and nothing currently lands inside it. The soundscape only shifts seconds later, and gradually, which leaves a gap where the person decides whether the system is real.">
+        <defs>
+          <marker id="f4w" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-head warn"/></marker>
+        </defs>
+
+        <rect class="d-bound good" x="64" y="44" width="240" height="152" rx="3"/>
+        <text class="d-t sm good" x="296" y="36" text-anchor="end">engagement window &mdash; 400 ms</text>
+
+        <rect class="d-bound" x="92" y="96" width="184" height="52" rx="3"/>
+        <text class="d-t warn" x="184" y="120" text-anchor="middle">nothing lands here</text>
+        <text class="d-t sm warn" x="184" y="138" text-anchor="middle">no proof it did anything</text>
+
+        <line class="d-line weak" x1="306" y1="72" x2="398" y2="72" marker-start="url(#f4w)" marker-end="url(#f4w)"/>
+        <text class="d-t sm warn" x="352" y="62" text-anchor="middle">the gap</text>
+
+        <rect class="d-box" x="400" y="96" width="440" height="52" rx="3"/>
+        <text class="d-t" x="620" y="120" text-anchor="middle">the soundscape actually shifts</text>
+        <text class="d-t sm" x="620" y="138" text-anchor="middle">gradually &mdash; and it should</text>
+
+        <line class="d-line hair" x1="64" y1="196" x2="868" y2="196"/>
+        <line class="d-line hair" x1="64" y1="196" x2="64" y2="204"/>
+        <line class="d-line hair" x1="184" y1="196" x2="184" y2="204"/>
+        <line class="d-line hair" x1="304" y1="196" x2="304" y2="204"/>
+        <line class="d-line hair" x1="400" y1="196" x2="400" y2="204"/>
+        <line class="d-line hair" x1="330" y1="204" x2="342" y2="188"/>
+        <line class="d-line hair" x1="342" y1="204" x2="354" y2="188"/>
+
+        <text class="d-t sm" x="64" y="220">0 &mdash; the tap</text>
+        <text class="d-t sm" x="184" y="220" text-anchor="middle">200 ms</text>
+        <text class="d-t sm" x="304" y="220" text-anchor="middle">400 ms</text>
+        <text class="d-t sm" x="620" y="220" text-anchor="middle">seconds later</text>
+      </svg>
+    </div>
+    <figcaption><b>Fig. 4</b> &mdash; The soundscape is the slow, correct answer, and it lands nowhere near the window where somebody decides this thing is real. Something else has to fill that gap.</figcaption>
+  </figure>
+
+  <p><strong>And soundscapes alone won&rsquo;t carry it.</strong> Even if we nail that feedback, it only reaches the people who care about the soundscape in the first place. Some people just aren&rsquo;t going to be into it. Water noises can be genuinely relaxing and still not matter enough to bring somebody back a second time. So there has to be something else waiting on the other side of the tap &mdash; artistic expression, some human meaning, some gamification. Something with a human touch, beyond the sound changing.</p>
+
+  <p><strong>And we don&rsquo;t know what anybody likes.</strong> This one&rsquo;s a cold start. Prediction needs preferences, and on day one every single person is brand new &mdash; which is exactly the moment first impressions matter most. We can&rsquo;t just assume everybody likes rain.</p>
+
+  <p>The obvious move is to ask them. But audio is hard to ask about. &ldquo;Do you like rain sounds?&rdquo; isn&rsquo;t really answerable: they can&rsquo;t hear the rain you mean, and &ldquo;rain sounds&rdquo; covers a dozen recordings they&rsquo;d feel completely differently about. So you put playback snippets in the survey &mdash; except we&rsquo;d be handing them that survey inside a room whose whole job is playing sound. Asking somebody to listen to audio in a room that&rsquo;s already playing audio is a conflict of auditory interest. That&rsquo;s the corner we&rsquo;re in.</p>
+
+  <div class="sec">
+    <p class="sec-mark">Stage three</p>
+    <h2>Play both</h2>
+  </div>
+
+  <p>So here&rsquo;s where we are now. It starts with the 400 milliseconds, and the move is <strong>layers</strong>.</p>
+
+  <p>Instead of the player playing one soundscape, it plays several at once. That works because of what a soundscape actually is: a painting of an environment. Environments are mixtures, and environments coexist, so their soundscapes generally do too. If somebody likes rain and somebody else likes fire, we don&rsquo;t have to pick. Play both.</p>
+
+  <p>Which quietly solves two things at once. It accommodates a whole room instead of whichever preference happened to win the vote &mdash; and it gives us the fast, perceptible response we were missing. You tap, a layer comes in, and you can <em>hear</em> that it came in. That&rsquo;s the receipt. Even if everyone in the room likes rain, everyone still gets their own rain layer; we just have to make sure it&rsquo;s <em>different</em> rain, varied recordings rather than the same one four times, so each tap is distinguishable to the person who made it.</p>
+
+  <p>The open question inside this one is whether a combination needs to be scored &mdash; some metric or objective function that gauges how good a given stack of layers actually sounds together. We might need it. We might not. That part isn&rsquo;t settled.</p>
+
+  <figure class="wide">
+    <div class="figwrap">
+      <svg viewBox="0 0 900 252" role="img" aria-label="One player holds several sound layers at once. Each tap adds a layer on top of the room's base layer, and each layer is a card with a story, an artist and a photo from the recording.">
+        <defs>
+          <marker id="f5g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-head good"/></marker>
+        </defs>
+
+        <text class="d-t hd good" x="24" y="20">ONE PLAYER, MANY LAYERS</text>
+
+        <rect class="d-box k-good" x="24" y="40" width="110" height="36" rx="3"/>
+        <text class="d-t" x="79" y="63" text-anchor="middle">tap 14:02</text>
+        <rect class="d-box k-good" x="24" y="92" width="110" height="36" rx="3"/>
+        <text class="d-t" x="79" y="115" text-anchor="middle">tap 14:05</text>
+        <rect class="d-box k-good" x="24" y="144" width="110" height="36" rx="3"/>
+        <text class="d-t" x="79" y="167" text-anchor="middle">tap 14:09</text>
+
+        <line class="d-line good" x1="134" y1="58" x2="186" y2="58" marker-end="url(#f5g)"/>
+        <line class="d-line good" x1="134" y1="110" x2="186" y2="110" marker-end="url(#f5g)"/>
+        <line class="d-line good" x1="134" y1="162" x2="186" y2="162" marker-end="url(#f5g)"/>
+
+        <rect class="d-box k-good" x="192" y="36" width="430" height="44" rx="3"/>
+        <text class="d-t" x="208" y="63">Rain on canvas</text>
+        <text class="d-t sm" x="606" y="63" text-anchor="end">card &middot; artist &middot; place</text>
+        <rect class="d-box k-good" x="192" y="88" width="430" height="44" rx="3"/>
+        <text class="d-t" x="208" y="115">Ember, close mic</text>
+        <text class="d-t sm" x="606" y="115" text-anchor="end">card &middot; artist &middot; place</text>
+        <rect class="d-box k-good" x="192" y="140" width="430" height="44" rx="3"/>
+        <text class="d-t" x="208" y="167">Wind through pine</text>
+        <text class="d-t sm" x="606" y="167" text-anchor="end">card &middot; artist &middot; place</text>
+
+        <rect class="d-box" x="192" y="192" width="430" height="44" rx="3"/>
+        <text class="d-t" x="208" y="219">Room tone</text>
+        <text class="d-t sm" x="606" y="219" text-anchor="end">the base &mdash; always on</text>
+
+        <line class="d-line hair" x1="640" y1="36" x2="640" y2="184"/>
+        <text class="d-t" x="656" y="70">each layer is a card</text>
+        <text class="d-t sm" x="656" y="90">a story, an artist,</text>
+        <text class="d-t sm" x="656" y="108">a photo from the recording</text>
+        <text class="d-t good" x="656" y="146">and it&rsquo;s in the air</text>
+        <text class="d-t sm good" x="656" y="166">the moment you tap</text>
+      </svg>
+    </div>
+    <figcaption><b>Fig. 5</b> &mdash; Layers do double duty: the room can hold several people&rsquo;s preferences at once, and a new layer coming in is the acknowledgement that was missing from Fig. 4.</figcaption>
+  </figure>
+
+  <p><strong>Then the cards.</strong> The other half of the incentive problem was that plenty of people just don&rsquo;t care about soundscapes, and no amount of instant feedback fixes that. So every layer is a card. It has its own identity, its own story, an artist behind it, and a photo &mdash; usually taken where and when the recording was made. Tap in a room and you see the whole stack that&rsquo;s playing: every sound in the air, who made it, where it came from.</p>
+
+  <p>Around that we&rsquo;ve built an ecosystem. Artists make their own cards and tell their own stories. Every player has a comments section. There&rsquo;s a public site you can browse on your own time &mdash; listen to mixes, swap tracks, layer two soundscapes into a mix of your own, explore artists and the newest collections, and say what you think of them. We want the recordists to be local. That&rsquo;s where the human touch lives, and it&rsquo;s the part that has nothing to do with whether you happen to like rain.</p>
+
+  <p>And it&rsquo;s collectible. When you tap in a room, that sound goes into your profile and it&rsquo;s yours &mdash; you can use it at home, in your own listening time, with more material to layer and mix. Each player has its own exclusive set of sounds you can&rsquo;t get anywhere else, which is the reason to go sit in a different room: hear something good on a very nice pair of speakers, tap, upvote, and it&rsquo;s waiting for you when you get home. A mobile app for listening on the go comes after that.</p>
+
+  <p>So the fast response is solved by layers, and the incentive is solved by cards, artists and collecting. Which leaves surveying.</p>
+
+  <p><strong>You survey them on what&rsquo;s already in the air.</strong> That was the answer, and it was sitting right there. We don&rsquo;t play anybody anything new &mdash; we ask them to rate the mix they&rsquo;re currently sitting inside. It&rsquo;s a far better question than &ldquo;do you like rain sounds?&rdquo; asked in silence, because they&rsquo;re not imagining a sound, they&rsquo;re assessing one. And the conflict of auditory interest just evaporates, because the audio we&rsquo;re asking about is the audio that was going to be playing anyway.</p>
+
+  <p>We don&rsquo;t have to invent the scale either. ISO 12913 is the standard for assessing acoustic environments, and its attribute scales &mdash; <em>pleasant, chaotic, calm, monotonous</em> and the rest &mdash; come with an existing body of research built on them. Whichever format we settle on, that means our profiles connect to other people&rsquo;s papers instead of being a private invention. Research-backed interpretation, rather than a scale we made up. And the natural moment to ask is at sign-up, for anyone who&rsquo;s never done one.</p>
+
+  <p><strong>Anonymous voting</strong> is the other half of that. A new person can test-run the whole thing without signing up, which is deliberate &mdash; we spent this entire project removing friction and we&rsquo;re not going to put it back at the door. But an anonymous voter never fills out a survey, so we profile them from votes alone: an upvote associates them with the combination that was playing at that moment, and a downvote tells us at minimum that this combination isn&rsquo;t for them. They can be on the web player too, so there may be activity there as well, though usually there won&rsquo;t be.</p>
+
+  <p><strong>And that&rsquo;s the part we haven&rsquo;t solved.</strong> A signed-up voter gives us three kinds of signal: votes, web activity, and surveys. An anonymous voter gives us one. Before any prediction can happen, those have to resolve into a single way of describing a listener &mdash; one profile format that both kinds of voter can be expressed in. Getting harmony between them is the problem we&rsquo;re actually working on right now.</p>
+
+  <figure class="wide">
+    <div class="figwrap">
+      <svg viewBox="0 0 900 292" role="img" aria-label="Anonymous voters supply one signal, votes. Signed-up voters supply three: votes, web activity and an ISO 12913 survey. Both have to resolve into a single profile format, which is unsolved, before the prediction layer can be built on top of it.">
+        <defs>
+          <marker id="f6w" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-head warn"/></marker>
+          <marker id="f6h" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-head"/></marker>
+        </defs>
+
+        <rect class="d-box k-warn" x="24" y="36" width="210" height="92" rx="4"/>
+        <text class="d-t" x="40" y="62">Anonymous voter</text>
+        <text class="d-t sm" x="40" y="86">every vote they cast</text>
+        <text class="d-t sm" x="40" y="106">web activity, if any</text>
+
+        <rect class="d-box k-good" x="24" y="160" width="210" height="112" rx="4"/>
+        <text class="d-t" x="40" y="186">Signed-up voter</text>
+        <text class="d-t sm" x="40" y="210">every vote they cast</text>
+        <text class="d-t sm" x="40" y="230">web activity</text>
+        <text class="d-t sm" x="40" y="250">survey on what&rsquo;s playing</text>
+
+        <line class="d-line weak" x1="234" y1="82" x2="304" y2="140" marker-end="url(#f6w)"/>
+        <text class="d-t sm warn" x="286" y="102" text-anchor="middle">one signal</text>
+        <line class="d-line weak" x1="234" y1="216" x2="304" y2="182" marker-end="url(#f6w)"/>
+        <text class="d-t sm warn" x="288" y="230" text-anchor="middle">three signals</text>
+
+        <text class="d-t hd warn" x="310" y="100">WHERE WE&rsquo;RE STUCK</text>
+        <rect class="d-bound" x="310" y="110" width="240" height="100" rx="4"/>
+        <text class="d-t warn" x="430" y="152" text-anchor="middle">one profile format</text>
+        <text class="d-t sm warn" x="430" y="174" text-anchor="middle">that fits both kinds of voter</text>
+
+        <line class="d-line weak" x1="550" y1="160" x2="612" y2="160" marker-end="url(#f6w)"/>
+        <text class="d-t sm" x="581" y="150" text-anchor="middle">then</text>
+
+        <rect class="d-box" x="618" y="128" width="258" height="66" rx="4"/>
+        <text class="d-t" x="747" y="154" text-anchor="middle">Prediction</text>
+        <text class="d-t sm" x="747" y="174" text-anchor="middle">what should this room play next?</text>
+      </svg>
+    </div>
+    <figcaption><b>Fig. 6</b> &mdash; Two kinds of voter, wildly different amounts of signal, and one representation that has to hold both. Nothing downstream can be built until that joint exists.</figcaption>
+  </figure>
+
+  <div class="coda">
+    <p class="coda-h">Stage four &mdash; recording</p>
+    <p>And then prediction: taking those profiles and working out what a whole room of people should actually be hearing. That&rsquo;s the next one.</p>
+  </div>
+
+</article>
