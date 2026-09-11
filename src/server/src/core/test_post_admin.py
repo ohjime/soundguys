@@ -1,6 +1,7 @@
 from urllib.parse import parse_qs, urlsplit
 
 from django.contrib.auth import get_user_model
+from django.templatetags.static import static
 from django.test import TestCase
 from django.urls import reverse
 
@@ -41,7 +42,7 @@ class LocalPostAdminTests(TestCase):
     def test_add_page_exposes_shared_writing_and_local_collection(self):
         response = self.client.get(reverse("admin:core_post_add"))
 
-        self.assertContains(response, "core/vendor/easymde.min.js")
+        self.assertContains(response, static("core/vendor/easymde.min.js"))
         self.assertContains(response, "data-authors-widget")
         self.assertContains(response, 'id="id_font_family"')
         self.assertNotContains(response, 'id="id_cosound"')

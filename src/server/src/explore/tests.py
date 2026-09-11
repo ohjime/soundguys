@@ -6,6 +6,7 @@ from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
 from django.db.models.deletion import ProtectedError
+from django.templatetags.static import static
 from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -662,7 +663,7 @@ class ExploreAdminTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "data-easymde")
-        self.assertContains(response, "core/vendor/easymde.min.js")
+        self.assertContains(response, static("core/vendor/easymde.min.js"))
 
     def test_content_fields_follow_the_requested_admin_order(self):
         self.client.force_login(self.admin_user)
