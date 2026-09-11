@@ -3,20 +3,22 @@
         <div class="flex flex-col items-center justify-center gap-6 pt-4">
             <!-- allow_anonymous toggles the "Continue Anonymously" affordance for callers like vote. -->
             <!-- Email form — pressed stays true after send; cancel-login resets it. -->
+            <!-- The field goes readonly rather than disabled while a code is out: readonly
+                 values are still serialised, so a resubmit always carries what the box
+                 shows instead of a copy captured in an Alpine binding a beat too late. -->
             <!-- djlint:off -->
             <form class="w-full"
-                  x-data="{ pressed: false, email: '', submittedEmail: '' }"
+                  x-data="{ pressed: false, email: '' }"
                   @login-cancel.window="pressed = false"
-                  @submit="submittedEmail = email; pressed = true"
+                  @submit="pressed = true"
                   hx-post="{% url 'login:check_email' %}"
                   hx-target="#login-code-section"
                   hx-swap="innerHTML swap:250ms">
             <!-- djlint:on -->
             {% csrf_token %}
-            <input type="hidden" name="email" :value="submittedEmail || email" />
             <div class="join w-full">
                 <div class="w-full -mb-6">
-                    <label class="input validator join-item w-full" :disabled="pressed">
+                    <label class="input validator join-item w-full" :class="{ 'opacity-60': pressed }">
                         <svg class="h-[1em] opacity-50"
                              xmlns="http://www.w3.org/2000/svg"
                              viewBox="0 0 24 24">
@@ -27,9 +29,10 @@
                         </svg>
                         <input class="w-full"
                                type="email"
+                               name="email"
                                x-model="email"
                                placeholder="Enter Email Address"
-                               :disabled="pressed"
+                               :readonly="pressed"
                                required />
                     </label>
                     <div class="validator-hint hidden">Email address is not valid.</div>
@@ -55,9 +58,10 @@
             Check your email
         </div>
         {% if error %}<div class="alert alert-error text-sm py-2">{{ error }}</div>{% endif %}
+        {% if notice %}<div class="alert alert-success text-sm py-2">{{ notice }}</div>{% endif %}
         <!-- djlint:off -->
     <form class="w-full"
-          x-data="{ pressed: false }"
+          x-data="{ pressed: false, code: '' }"
           @submit="pressed = true"
           hx-post="{% url 'login:verify_code' %}"
           hx-target="#login-code-section"
@@ -65,23 +69,39 @@
         <!-- djlint:on -->
         {% csrf_token %}
         <div class="flex w-full flex-col items-center gap-4">
-            <label class="otp otp-sm sm:otp-lg otp-neutral">
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <input type="text"
-                       name="code"
-                       aria-label="6-digit verification code"
-                       inputmode="numeric"
-                       maxlength="6"
-                       pattern="[0-9]{6}"
-                       autocomplete="one-time-code"
-                       autofocus
-                       required />
-            </label>
+            <div class="flex items-center gap-2">
+                <!-- The otp component sets pointer-events:none on the input and hides its
+                     caret and selection, and only paints a focus ring while the value is
+                     valid. A stray paste therefore lands in a box that looks inert and is
+                     already full at maxlength, so keep the value digits-only, focus it
+                     after the swap (autofocus does not fire on htmx-inserted markup) and
+                     always offer an explicit way out. -->
+                <label class="otp otp-sm sm:otp-lg otp-neutral">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                    <input type="text"
+                           name="code"
+                           x-ref="code"
+                           aria-label="6-digit verification code"
+                           inputmode="numeric"
+                           maxlength="6"
+                           pattern="[0-9]{6}"
+                           autocomplete="one-time-code"
+                           autofocus
+                           x-init="$nextTick(() => $el.focus())"
+                           @input="$el.value = $el.value.replace(/[^0-9]/g, '').slice(0, 6); code = $el.value"
+                           required />
+                </label>
+                <button type="button"
+                        x-show="code.length > 0"
+                        style="display: none"
+                        class="btn btn-ghost btn-xs text-neutral-content/60"
+                        @click="code = ''; $refs.code.value = ''; $refs.code.focus()">Clear</button>
+            </div>
             <button type="submit"
                     class="btn btn-neutral swap w-full items-center justify-center"
                     :class="{ 'swap-active': pressed, 'btn-disabled': pressed }">
@@ -90,12 +110,47 @@
             </button>
         </div>
     </form>
-    <button class="btn btn-ghost btn-sm text-neutral-content/60 w-full"
-            hx-get="{% url 'login:cancel_code' %}"
-            hx-target="#login-code-section"
-            hx-swap="innerHTML swap:250ms"
-            @click="$dispatch('login-cancel')">Cancel</button>
+    <!-- Resend is throttled server-side. Mirroring the countdown here means the
+         button says when it will work, instead of answering a click with a
+         refusal that reads as "the system won't send me another code". -->
+    <!-- djlint:off -->
+    <div class="flex w-full items-center justify-center gap-1"
+         x-data="{ wait: {{ resend_wait|default:0 }} }"
+         x-init="if (wait > 0) { const t = setInterval(() => { if (--wait <= 0) clearInterval(t) }, 1000) }">
+    <!-- djlint:on -->
+        <button class="btn btn-ghost btn-sm text-neutral-content/60"
+                :disabled="wait > 0"
+                {% if resend_wait %}disabled{% endif %}
+                hx-post="{% url 'login:resend_code' %}"
+                hx-target="#login-code-section"
+                hx-swap="innerHTML swap:250ms">
+            <span x-show="wait <= 0" {% if resend_wait %}style="display: none"{% endif %}>Resend code</span>
+            <span x-show="wait > 0" {% if not resend_wait %}style="display: none"{% endif %}>Resend in <span x-text="wait">{{ resend_wait }}</span>s</span>
+        </button>
+        <span class="text-xs text-neutral-content/30">·</span>
+        <button class="btn btn-ghost btn-sm text-neutral-content/60"
+                hx-get="{% url 'login:cancel_code' %}"
+                hx-target="#login-code-section"
+                hx-swap="innerHTML swap:250ms"
+                @click="$dispatch('login-cancel')">Use a different email</button>
+    </div>
 </div>
+{% endpartialdef %}
+
+{% partialdef code_error %}
+    <!-- Dead ends only: no code is live, so six empty boxes and a Verify button
+         would just invite another doomed submit. The view pairs this partial
+         with an HX-Trigger of `login-cancel`, which unlocks the email field
+         above, so the instruction below is one the user can actually follow. -->
+    <div class="w-full flex flex-col gap-3">
+        <div class="divider divider-neutral text-xs text-neutral-content/60 uppercase tracking-widest my-0">
+            Start over
+        </div>
+        <div class="alert alert-error text-sm py-2">{{ error }}</div>
+        <p class="text-center text-xs text-neutral-content/60">
+            The email field above is editable again — fix it if you need to, then press Enter for a new code.
+        </p>
+    </div>
 {% endpartialdef %}
 
 {% partialdef logout_modal %}

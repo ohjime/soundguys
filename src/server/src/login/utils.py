@@ -1,7 +1,14 @@
+import math
+import time
+
 from allauth.account.adapter import get_adapter
 from random_username.generate import generate_username
 
 ANON_EMAIL_DOMAIN = "anon.cosound.ca"
+
+# Resending is the only way back to a fresh code, so it has to stay cheap for a
+# stuck user without turning the endpoint into a mail cannon.
+RESEND_COOLDOWN_SECONDS = 30
 
 
 def send_login_code(request, email):
@@ -10,6 +17,7 @@ def send_login_code(request, email):
     adapter.send_mail("account/email/login_code", email, {"code": code})
     request.session["login_code"] = code
     request.session["login_email"] = email
+    request.session["login_code_sent_at"] = time.time()
 
 
 def get_login_state(request):
@@ -19,9 +27,18 @@ def get_login_state(request):
     )
 
 
+def seconds_until_resend_allowed(request):
+    """Seconds left on the resend cooldown; 0 when a new code may be sent."""
+    sent_at = request.session.get("login_code_sent_at")
+    if not sent_at:
+        return 0
+    return max(0, math.ceil(RESEND_COOLDOWN_SECONDS - (time.time() - sent_at)))
+
+
 def clear_login_state(request):
     request.session.pop("login_code", None)
     request.session.pop("login_email", None)
+    request.session.pop("login_code_sent_at", None)
 
 
 def generate_anon_username():
