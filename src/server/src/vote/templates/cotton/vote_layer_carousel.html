@@ -1,103 +1,32 @@
-<!-- djlint:off -->
-<div class="relative w-full h-full"
-     x-data="{
-        title: '',
-        artist: '',
-        gain: null,
-        kind: 'player',
-        playerName: '',
-        collectionState: 0,
-        get collectionLabel() {
-            if (this.collectionState === 1) return 'Collected';
-            if (this.collectionState === 2) return 'New';
-            return '';
-        },
-        updateActive() {
-            const el = this.$refs.carousel;
-            if (!el) return;
-            const items = el.getElementsByClassName('carousel-item');
-            const scroll = el.scrollLeft;
-            let index = 0;
-            let minDist = Infinity;
-            for (let i = 0; i < items.length; i++) {
-                const dist = Math.abs(items[i].offsetLeft - scroll);
-                if (dist < minDist) { minDist = dist; index = i; }
-            }
-            const store = Alpine.store('voteLayers');
-            const layer = store.layers[index];
-            if (!layer) return;
-            store.currentIndex = index;
-            this.title = layer.sound_title;
-            this.artist = layer.sound_artist;
-            this.gain = layer.gain;
-            this.kind = layer.kind;
-            this.playerName = layer.player_name || '';
-            this.collectionState = layer.collection_state || 0;
-        },
-        move(delta) {
-            const el = this.$refs.carousel;
-            if (!el) return;
-            const items = el.getElementsByClassName('carousel-item');
-            const store = Alpine.store('voteLayers');
-            const next = Math.max(0, Math.min(items.length - 1, store.currentIndex + delta));
-            el.scrollTo({ left: items[next].offsetLeft, behavior: 'smooth' });
-        },
-        goto(index) {
-            const el = this.$refs.carousel;
-            if (!el) return;
-            const items = el.getElementsByClassName('carousel-item');
-            const target = Math.max(0, Math.min(items.length - 1, index));
-            el.scrollTo({ left: items[target].offsetLeft, behavior: 'smooth' });
-        }
-     }"
-     @carousel-prev.window="move(-1)"
-     @carousel-next.window="move(1)"
-     @carousel-goto.window="goto($event.detail)"
-     x-init="$nextTick(() => {
-        const store = Alpine.store('voteLayers');
-        const el = $refs.carousel;
-        const items = el?.getElementsByClassName('carousel-item');
-        if (items && items[store.currentIndex]) {
-            el.scrollTo({ left: items[store.currentIndex].offsetLeft, behavior: 'instant' });
-        }
-        updateActive();
-     })">
-    <!-- djlint:on -->
-    <div x-ref="carousel"
-         @scroll.debounce.5ms="updateActive()"
-         class="carousel w-full h-full">
-        <template x-for="layer in $store.voteLayers.layers"
-                  :key="layer.kind + ':' + (layer.sound_id ?? 'player')">
-            <div class="carousel-item relative h-full w-full">
-                <c-core-image bind_src="layer.artwork_url" bind_alt="layer.sound_title" class="w-full" />
-                <div class="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-black/80 to-transparent z-10">
-                </div>
-                <div class="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/60 to-transparent z-10">
-                </div>
+<div class="relative w-full h-full">
+    <div x-ref="carousel" @scroll.debounce.5ms="updateActive()" class="carousel w-full h-full">
+        <template x-for="slide in carouselSlides" :key="slide.key">
+            <div data-vote-layer class="carousel-item relative h-full w-full snap-center">
+                {% if choice == '1' or choice == '0' %}
+                    <template x-if="slide.kind === 'vote'">
+                        <div class="h-full w-full"><c-vote-action-card /></div>
+                    </template>
+                {% endif %}
+
+                <template x-if="slide.kind === 'layer'">
+                    <div class="relative h-full w-full">
+                        <template x-if="slide.artwork_url"><c-core-image bind_src="slide.artwork_url" bind_alt="slide.sound_title" class="w-full" /></template>
+                        <div x-show="!slide.artwork_url" class="h-full w-full bg-gradient-to-br from-emerald-950 via-emerald-800 to-lime-950" aria-hidden="true"></div>
+                        <div class="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-black/80 to-transparent z-10"></div>
+                        <div class="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/60 to-transparent z-10"></div>
+                    </div>
+                </template>
             </div>
         </template>
     </div>
-    <div class="pointer-events-none absolute inset-0 z-20 p-3 pt-8 font-serif italic flex flex-col justify-between text-white font-thin text-shadow-lg">
-        <div class="flex items-start justify-between gap-2">
-            <div class="flex flex-col items-start gap-1 pr-12">
-                <div class="text-left text-lg leading-tight" x-text="title"></div>
-                <div x-show="kind === 'layer' && collectionLabel" x-cloak>
-                    <span class="badge badge-outline badge-xs font-sans not-italic font-normal text-white"
-                          :class="collectionState === 1 ? 'bg-white/30' : 'bg-success/75'"
-                          x-text="collectionLabel"></span>
-                </div>
-                <div x-show="kind === 'player'" x-cloak>
-                    <span class="badge badge-neutral badge-sm font-sans not-italic  font-normal text-shadow-none"
-                          x-text="'You are Here'"></span>
-                </div>
-            </div>
+    <template x-if="currentLayer">
+        <div class="pointer-events-none absolute inset-0 z-20 p-3 pt-8 font-serif italic flex flex-col justify-between text-white font-thin text-shadow-lg">
+            <div class="text-left text-lg leading-tight pr-12" x-text="currentLayer.sound_title"></div>
+            <button type="button" class="pointer-events-auto absolute top-6.5 right-3 grid size-8 place-items-center rounded-full bg-black/25 text-white shadow-md backdrop-blur-sm transition hover:scale-105 hover:bg-black/40 disabled:pointer-events-none disabled:opacity-60" :aria-label="currentLayer.saved ? 'Remove from favourite sounds' : 'Add to favourite sounds'" :aria-pressed="!!currentLayer.saved" hx-post="{% url 'library:keep_sound' %}" hx-swap="none" hx-disabled-elt="this" :hx-vals="JSON.stringify({ sound_id: currentLayer.sound_id })">
+                <svg class="size-5 drop-shadow-md transition-colors" :class="currentLayer.saved ? 'fill-red-500 text-red-500' : 'fill-transparent text-white'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" /></svg>
+            </button>
+            <a style="display: none" x-show="currentLayer.artist_url" :href="currentLayer.artist_url" target="_blank" rel="noopener" class="pointer-events-auto self-end text-right pb-1 pr-1 text-sm opacity-90 transition hover:opacity-100 hover:underline" :title="`Visit ${currentLayer.sound_artist}'s page`" x-text="currentLayer.sound_artist"></a>
+            <div x-show="!currentLayer.artist_url" class="self-end pb-1 pr-1 text-right text-sm opacity-90" x-text="currentLayer.sound_artist"></div>
         </div>
-        <span x-show="kind === 'layer' && gain !== null"
-              x-cloak
-              class="absolute top-9 right-3 not-italic font-mono text-[10px] tracking-widest leading-none px-1.5 py-0.5 rounded bg-white/15 backdrop-blur-sm text-white/90"
-              x-text="'VOL ' + gain"></span>
-        <div class="flex items-end justify-between gap-2">
-            <div class="text-right pb-1 pr-1 text-sm opacity-90 ml-auto" x-text="artist"></div>
-        </div>
-    </div>
+    </template>
 </div>

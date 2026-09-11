@@ -1,0 +1,20 @@
+<c-vars layers="" post="" choice="" sleeping="" throttle_seconds_left="0" />
+<div class="w-full max-w-80"
+     x-data="voteDisplay"
+     data-vote-display
+     data-vote-choice="{{ choice }}"
+     data-has-vote-action="{% if choice == '1' or choice == '0' %}true{% else %}false{% endif %}"
+     data-player-sleeping="{% if sleeping %}true{% else %}false{% endif %}"
+     data-throttle-seconds-left="{{ throttle_seconds_left|default:0 }}"
+     data-post-title="{% if post %}{{ post.post.title }}{% endif %}"
+     @vote-success.window="handleVoteSuccess()"
+     @vote-throttled.window="handleThrottle($event.detail?.seconds_left)"
+     @vote-auth-unavailable.window="handleVoteAuthUnavailable($event.detail)"
+     @player-activated.window="handlePlayerActivated($event.detail)"
+     @player-activation-unavailable.window="handleActivationUnavailable($event.detail)"
+     @layer-saved.window="onLayerSaved($event.detail)">
+    <div data-vote-layers hidden>{{ layers|json_script:"vote-display-layers" }}</div>
+    <c-core-deck id="deck">
+        <c-vote-card :layers="layers" :sleeping="sleeping" />
+    </c-core-deck>
+</div>

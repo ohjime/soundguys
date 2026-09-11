@@ -213,13 +213,25 @@ before this page goes in front of anyone.
                     A <code>Listener</code> wraps a user and owns a
                     <code>collection</code> — the deck of sounds they are allowed
                     to mix with. A <code>Player</code> is a venue endpoint: a
-                    manager, a name, a location, an assigned library
-                    (<code>sounds</code>), a 64-hex API token generated on first
-                    save, and <code>playing</code>, a pydantic
+                    manager, a name, a location, a 64-hex API token generated on
+                    first save, and <code>playing</code>, a pydantic
                     <code>Prediction</code> stored as JSON that holds the layers
-                    currently assigned to that venue. A <code>Vote</code> joins a
-                    listener, a player, a cosound, an integer value, and the
-                    table's <code>section</code> string.
+                    currently assigned to that venue. The player points to a
+                    <code>LocalPost</code>; its available sounds live in
+                    <code>player.post.collection</code>, which supplies the
+                    prediction loop and the player's sound library.
+                </p>
+                <p>
+                    Core's <code>Post</code> holds the shared writing: title,
+                    Markdown article, typography, author credits, composer and
+                    publication date. A <code>LocalPost</code> adds a sound
+                    collection, while Explore's <code>PublicPost</code> adds a
+                    fixed <code>Cosound</code>. Both link to that shared post,
+                    and <code>Comment</code> attaches to it directly, with one
+                    response per listener. The player's changing prediction
+                    stays in <code>player.playing</code>. Separately, a
+                    <code>Vote</code> joins a listener, a player, a cosound, an
+                    integer value, and the table's <code>section</code> string.
                 </p>
                 <h3>The vote path</h3>
                 <ol>
@@ -230,30 +242,38 @@ before this page goes in front of anyone.
                         page that generates and copies these URLs per section.
                     </li>
                     <li>
-                        The page resolves the token to a player and builds a
-                        carousel of what is currently playing there: card zero is
-                        the venue, then one card per layer with its artwork, tags,
-                        gain and collection state.
+                        The page resolves the token to a player. Its Vote tab
+                        shows the current prediction as a carousel of sound
+                        metadata: artwork, title, artist, tags, gain and
+                        collection state. This card describes the room's audio;
+                        it does not load audio files or start browser playback.
+                        The published local post supplies the heading, article
+                        and discussion around it.
                     </li>
                     <li>
-                        If the phone isn't authenticated, the vote is intercepted:
-                        a login card is pushed onto the deck, the intended partial
-                        is stashed in the session, and the vote resumes after
-                        passwordless email login — or as a guest account
-                        (<code>@anon.cosound.ca</code>), so a stranger can still
-                        vote.
+                        Each sound has a like/save control for adding it to the
+                        listener's collection, and the post has shared comments.
+                        Saving and commenting require sign-in; comments allow
+                        one response per listener. A valid NFC link also shows an
+                        Upvote or Downvote button. Pressing it submits that choice;
+                        if sign-in is needed, the vote resumes after login. Simply
+                        opening the page or changing tabs does not cast a vote.
                     </li>
                     <li>
-                        A per-listener throttle (60 seconds by default) rejects
-                        rapid repeat taps and reports the seconds remaining.
+                        Vote submission checks the player token and NFC choice,
+                        requires authentication (including the supported guest
+                        account flow), and applies the per-listener throttle:
+                        60 seconds by default, with the time remaining reported
+                        for rapid repeat submissions.
                     </li>
                     <li>
-                        The current layers are frozen into a <code>Cosound</code>
-                        via <code>get_or_create_from_layers</code>, and a
-                        <code>Vote</code> row is written against it. On an upvote,
-                        every sound in the mixture is added to that listener's
-                        collection — that is the "collect what you heard in public"
-                        mechanic, implemented in four lines.
+                        When that backend accepts a submission, the current
+                        layers are frozen into a <code>Cosound</code> via
+                        <code>get_or_create_from_layers</code>, and a
+                        <code>Vote</code> row is written against it. An upvote no
+                        longer collects the whole mixture automatically; adding
+                        sounds to the collection is an explicit action through
+                        each layer's like/save control.
                     </li>
                 </ol>
                 <p>

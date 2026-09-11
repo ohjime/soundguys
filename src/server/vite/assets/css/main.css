@@ -1,5 +1,6 @@
 @import url('https://fonts.cdnfonts.com/css/helvetica-neue-5');
 @import "tailwindcss";
+@import "./sleepy-background.css";
 
 .explore-font {
     font-family: var(--explore-font-family, var(--font-sans));

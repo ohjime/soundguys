@@ -1,0 +1,4 @@
+<div class="tabs tabs-lift flex-nowrap" role="radiogroup" aria-label="Venue sections">
+    <input type="radio" id="venue-tab-vote" name="venue_tabs" class="tab w-auto" aria-label="Vote" aria-controls="vote-tab-content" checked="checked" hx-get="{% url 'vote:vote_tab' %}?{{ request.GET.urlencode }}" hx-target="#vote-tab-content" hx-sync="#vote-tab-content:replace" hx-swap="innerHTML" />
+    <input type="radio" id="venue-tab-about" name="venue_tabs" class="tab w-auto" aria-label="What is this?" aria-controls="vote-tab-content" hx-get="{% url 'vote:about' %}?{{ request.GET.urlencode }}" hx-target="#vote-tab-content" hx-sync="#vote-tab-content:replace" hx-swap="innerHTML" />
+</div>

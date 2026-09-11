@@ -1,0 +1,67 @@
+<div data-player-activation-layer class="relative isolate grid h-full w-full overflow-hidden bg-[#011f41]">
+    <c-sleepy-background />
+
+    {% if choice == '1' or choice == '0' %}
+        <div x-show="!activationComplete"
+             class="relative z-10 col-start-1 row-start-1 flex h-full w-full flex-col items-center justify-end overflow-hidden px-5 pb-5 text-center text-white">
+            <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-[#011f41] via-[#011f41]/70 to-transparent"></div>
+            <div class="relative z-10 flex w-full max-w-64 flex-col gap-1.5">
+                {% if not request.user.is_authenticated %}
+                    <button type="button"
+                            data-nfc-vote
+                            data-activation-auth
+                            @htmx:before-request="activationError = ''"
+                            class="btn min-h-9 w-full border-0 bg-white text-xs text-[#143788] shadow-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-white/80"
+                            aria-label="Sign in and activate this space"
+                            hx-post="{% url 'vote:submit_vote' %}?{{ request.GET.urlencode }}"
+                            hx-vals='{"activation":"1"}'
+                            hx-swap="none"
+                            hx-disabled-elt="this">SIGN IN &amp; ACTIVATE</button>
+                    <div class="divider my-0 text-xs text-white/70">OR</div>
+                    <button type="button"
+                            data-nfc-vote
+                            data-activation-anonymous
+                            @htmx:before-request="activationError = ''"
+                            class="btn min-h-9 w-full border border-white/60 bg-transparent text-xs text-white shadow-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-white/80"
+                            aria-label="Activate this space anonymously"
+                            hx-post="{% url 'vote:submit_vote' %}?{{ request.GET.urlencode }}"
+                            hx-vals='{"activation":"1","anonymous":"1"}'
+                            hx-swap="none"
+                            hx-disabled-elt="this">ACTIVATE ANONYMOUSLY</button>
+                {% else %}
+                    <button type="button"
+                            data-nfc-vote
+                            data-activation-authenticated
+                            @htmx:before-request="activationError = ''"
+                            class="btn min-h-9 w-full border-0 bg-white text-xs text-[#143788] shadow-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-white/80"
+                            aria-label="Activate this space"
+                            hx-post="{% url 'vote:submit_vote' %}?{{ request.GET.urlencode }}"
+                            hx-vals='{"activation":"1"}'
+                            hx-swap="none"
+                            hx-disabled-elt="this">ACTIVATE</button>
+                {% endif %}
+            </div>
+            <span x-cloak x-show="activationError" x-text="activationError" role="alert" class="relative z-10 mt-3 max-w-56 rounded-full bg-black/60 px-4 py-2 text-xs font-semibold text-white"></span>
+        </div>
+    {% else %}
+        <div class="relative z-10 col-start-1 row-start-1 flex h-full w-full flex-col items-center justify-end px-8 pb-8 text-center text-white">
+            <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-[#011f41] via-[#011f41]/70 to-transparent"></div>
+            <span class="relative z-10 font-serif text-3xl font-semibold">This space is resting</span>
+            <span class="relative z-10 mt-2 max-w-56 text-sm text-white/80">Tap a room tag to activate its soundscape.</span>
+        </div>
+    {% endif %}
+
+    <div x-cloak
+         x-show="activationComplete"
+         x-transition:enter="transition duration-500 ease-out"
+         x-transition:enter-start="scale-95 opacity-0"
+         x-transition:enter-end="scale-100 opacity-100"
+         role="status"
+         class="relative z-20 col-start-1 row-start-1 flex h-full w-full flex-col items-center justify-center overflow-hidden bg-emerald-700 px-8 text-center text-white">
+        <span class="grid size-28 place-items-center rounded-full border-2 border-white/25 bg-white/15 shadow-xl shadow-black/20">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" class="size-14" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m5 12 4 4L19 6" /></svg>
+        </span>
+        <span class="mt-5 font-serif text-3xl font-semibold tracking-tight">Space activated</span>
+        <span class="mt-2 max-w-56 text-sm leading-relaxed text-white/75">A new soundscape is starting now.</span>
+    </div>
+</div>

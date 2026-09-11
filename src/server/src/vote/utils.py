@@ -3,6 +3,7 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.db.models import Max
+from django.urls import reverse
 from django.utils import timezone
 
 from core.models import Listener, Player, Sound
@@ -18,19 +19,20 @@ def build_vote_context(request):
     player = None
     if token:
         player = (
-            Player.objects.select_related("manager").filter(token=token).first()
+            Player.objects.select_related("manager", "post__post").filter(token=token).first()
         )
 
     layers = serialize_player_for_carousel(player, request.user, choice) if player else []
 
     throttle_seconds_left = 0
-    if request.user.is_authenticated:
+    if player and not player.sleeping and layers and request.user.is_authenticated:
         listener = Listener.objects.filter(user=request.user).first()
         if listener:
             throttle_seconds_left = get_throttle_seconds_left(listener)
 
     return {
         "player": player,
+        "sleeping": bool(player and player.sleeping),
         "choice": choice,
         "section": section,
         "layers": layers,
@@ -39,32 +41,14 @@ def build_vote_context(request):
 
 
 def serialize_player_for_carousel(player, user=None, choice=None):
-    """Carousel layer list. Index 0 = player info; 1..N = sound layers."""
-    is_upvote = str(choice) == "1"
-    items = [
-        {
-            "kind": "player",
-            "sound_id": None,
-            "sound_file": "",
-            "sound_gain": None,
-            "sound_title": player.name,
-            "sound_artist": player.manager.name if player.manager else "",
-            "artwork_url": player.photo.url if player.photo else "",
-            "bio": player.bio or "",
-            "gain": None,
-            "flavor": "",
-            "tags": "",
-            "location": player.location or "Unknown",
-            "player_name": player.name,
-            "collection_state": 0,
-        }
-    ]
+    """Current prediction metadata, without resolving or exposing audio URLs."""
+    items = []
 
     layer_objs = list(player.playing.layers)
     sound_ids = [l.sound_id for l in layer_objs]
     sounds = {
         s.pk: s
-        for s in Sound.objects.filter(pk__in=sound_ids).prefetch_related("tags")
+        for s in Sound.objects.filter(pk__in=sound_ids).select_related("artist").prefetch_related("tags")
     }
 
     saved_ids = set()
@@ -79,28 +63,56 @@ def serialize_player_for_carousel(player, user=None, choice=None):
         sound = sounds.get(l.sound_id)
         if sound is None:
             continue
-        in_collection = l.sound_id in saved_ids
-        if in_collection:
-            collection_state = 1
-        elif is_upvote:
-            collection_state = 2
-        else:
-            collection_state = 0
         items.append(
             {
                 "kind": "layer",
-                **sound.asLayer(with_gain=l.sound_gain),
+                "sound_id": sound.pk,
+                "sound_gain": l.sound_gain,
+                "sound_title": sound.title,
+                "sound_artist": sound.artist_name,
+                "artist_url": sound.artist_url,
                 "artwork_url": sound.art.url if sound.art else "",
                 "gain": int(round(l.sound_gain * 100)),
                 "flavor": sound.flavor or "",
                 "tags": " / ".join(sound.tags.names()) or "Unknown",
-                "bio": "",
-                "location": "",
-                "player_name": player.name,
-                "collection_state": collection_state,
+                "saved": sound.pk in saved_ids,
             }
         )
     return items
+
+
+def local_discussion_context(request, post, page_number=1, form=None):
+    from core.discussion import build_discussion_context
+
+    params = request.GET.copy()
+    params.pop("page", None)
+    query = params.urlencode()
+    discussion_url = reverse("vote:discussion", kwargs={"slug": post.post.slug})
+    comment_url = reverse("vote:create_comment", kwargs={"slug": post.post.slug})
+    return {
+        **build_discussion_context(
+            post.post,
+            request.user,
+            page_number,
+            form,
+            discussion_url=f"{discussion_url}?{query}",
+            comment_url=f"{comment_url}?{query}",
+            dom_id=f"local-discussion-{post.pk}",
+        ),
+        "post": post,
+    }
+
+
+def build_vote_page_context(request):
+    from core.renderer import render_markdown
+
+    context = build_vote_context(request)
+    player = context["player"]
+    post = player.post if player and player.post.post.publication_date else None
+    context.update(post=post, body_html=render_markdown(post.post.article) if post else "")
+    if post:
+        context.update(local_discussion_context(request, post))
+    return context
 
 
 def get_throttle_seconds_left(listener, window: timedelta = VOTE_THROTTLE_WINDOW):

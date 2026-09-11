@@ -1,6 +1,5 @@
 <c-vars hx-swap-oob="" />
-<div id="vote-card-figure"
-     {% if hx_swap_oob %}hx-swap-oob="{{ hx_swap_oob }}"{% endif %}
-     class="w-full h-full htmx-added:opacity-0 motion-preset-shrink motion-preset-fade-md htmx-swapping:motion-duration-200 htmx-swapping:motion-opacity-out-0">
-    {{ slot }}
+<div id="vote-card-figure" {% if hx_swap_oob %}hx-swap-oob="{{ hx_swap_oob }}"{% endif %} class="grid w-full h-full htmx-added:opacity-0 motion-preset-shrink motion-preset-fade-md htmx-swapping:motion-duration-200 htmx-swapping:motion-opacity-out-0">
+    <div aria-hidden="true" class="col-start-1 row-start-1 aspect-square w-68 max-w-full"></div>
+    <div class="col-start-1 row-start-1 min-h-0 min-w-0">{{ slot }}</div>
 </div>

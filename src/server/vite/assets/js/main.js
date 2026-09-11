@@ -8,6 +8,7 @@ import { installSoundscapeBridge } from './soundscape-store.js';
 import { installSoundSelectorGuard } from './sound-selector-guard.js';
 import { studioBuilder } from './studio-builder.js';
 import { trimTrack } from './trim-track.js';
+import { voteDisplay } from './vote-display.js';
 import './explore-fonts.js';
 
 window.htmx = htmx;
@@ -20,6 +21,7 @@ installExploreLayerLinks();
 Alpine.data('layerCarousel', layerCarousel);
 Alpine.data('studioBuilder', studioBuilder);
 Alpine.data('trimTrack', trimTrack);
+Alpine.data('voteDisplay', voteDisplay);
 Alpine.start();
 
 // Start the intersection observer for scroll animations

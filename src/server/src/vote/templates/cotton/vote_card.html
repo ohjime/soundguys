@@ -1,0 +1,88 @@
+<c-vars layers="" sleeping="" />
+{% if sleeping %}
+<c-core-card showExit="false" bgColor="bg-[#4a351d]" ringColor="ring-[#2d2d2d]">
+    <div data-vote-card data-player-activation-card class="contents">
+        <figure class="relative mx-6 mt-7 overflow-visible rounded-xl ring-7 ring-amber-100/60 bg-amber-950">
+            <div class="aspect-square w-full overflow-hidden rounded-xl">
+                <c-vote-layer-indicator-dock centered="true">
+                    <c-vote-card-header>
+                        <div class="join w-fit ring-4">
+                            <div
+                                class="join-item btn btn-sm h-7 min-h-0 rounded-none border-none bg-neutral px-2.5 text-white text-xl tracking-[25%] font-medium">
+                                AWAKEN</div>
+                        </div>
+                    </c-vote-card-header>
+                </c-vote-layer-indicator-dock>
+                <c-vote-activation-card />
+            </div>
+        </figure>
+        <div class="relative mx-4 my-5 rounded-2xl bg-amber-50/90 px-5 py-4 text-amber-950 ring-4 ring-amber-500/55">
+            <div aria-live="polite" class="min-h-20 font-serif text-[9pt] italic font-light">
+                <div x-show="!activationComplete">
+                    <p>This room is resting. Activate it to begin a soundscape chosen from its collection.</p>
+                </div>
+                <div x-cloak x-show="activationComplete" x-transition.opacity.duration.300ms>
+                    <p class="py-1 text-xs font-bold not-italic">[ SPACE ACTIVATED ]</p>
+                    <p>The room is waking up and its new soundscape is starting.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</c-core-card>
+{% else %}
+<c-core-card showExit="false" bgColor="bg-[#1f3f23]" ringColor="ring-[#2d2d2d]">
+    <div data-vote-card class="contents">
+        <figure class="relative ring-7 ring-neutral-content/70 rounded-t-md mx-6 mt-7 overflow-visible bg-base-300">
+            <div class="static aspect-square w-full rounded-t-md overflow-hidden">
+                <c-vote-layer-indicator-dock><c-vote-card-header><c-vote-layer-indicator /></c-vote-card-header></c-vote-layer-indicator-dock>
+                <c-vote-card-figure><c-vote-layer-carousel /></c-vote-card-figure>
+            </div>
+            <template x-if="carouselSlides.length > 1">
+                <div class="contents"><c-vote-arrows /></div>
+            </template>
+        </figure>
+        <c-vote-player-logo />
+        <div class="relative ring-5 ring-amber-600/60 mx-4 mb-4 rounded-xs rounded-b-2xl bg-white/65 text-black">
+            <div class="h-30 overflow-y-auto py-2 px-4">
+                <c-vote-card-body>
+                    <template x-if="isVoteSlide">
+                        <div class="relative min-h-24 italic font-serif font-extralight text-[8pt] font-stretch-95%">
+                            <div x-cloak x-show="!voted && secondsLeft <= 0" x-transition.opacity.duration.300ms>
+                                <p class="py-1 not-italic font-bold font-serif text-xs font-stretch-95%">[ <span
+                                        x-text="voteLabel.toUpperCase()"></span> THE SOUNDSCAPE ]</p>
+                                <p>Tap the green card to vote for the sounds around you. Your feedback helps guide what
+                                    this venue plays next. The current sound layers are waiting on the card underneath.
+                                </p>
+                            </div>
+                            <div x-cloak x-show="voted" x-transition:enter="transition duration-500 ease-out delay-150"
+                                x-transition:enter-start="translate-y-2 opacity-0"
+                                x-transition:enter-end="translate-y-0 opacity-100">
+                                <p class="py-1 not-italic font-bold font-serif text-xs font-stretch-95%">[ <span
+                                        x-text="votePastLabel.toUpperCase()"></span> ]</p>
+                                <p>Thank you—your feedback is now part of this venue’s listening history and will help
+                                    shape future soundscapes. Use the carousel to see what is playing.</p>
+                            </div>
+                            <div x-cloak x-show="!voted && secondsLeft > 0" x-transition.opacity.duration.300ms>
+                                <p class="py-1 not-italic font-bold font-serif text-xs font-stretch-95%">[ VOTE RECEIVED
+                                    ]</p>
+                                <p>Your recent vote is already helping shape this space. Use the carousel to see what is
+                                    playing.</p>
+                            </div>
+                        </div>
+                    </template>
+                    <template x-if="!isVoteSlide">
+                        <div><c-vote-sound-details /></div>
+                    </template>
+                </c-vote-card-body>
+            </div>
+            <div
+                class="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-neutral-content/80 to-transparent rounded-b-2xl">
+            </div>
+        </div>
+        <div
+            class="absolute z-10 bottom-0 left-1/2 -translate-x-1/2 ring-6 ring-[#2d2d2d]/60 drop-shadow-2xl flex justify-center rounded-t-2xl bg-base-100 w-fit">
+            <c-vote-master />
+        </div>
+    </div>
+</c-core-card>
+{% endif %}

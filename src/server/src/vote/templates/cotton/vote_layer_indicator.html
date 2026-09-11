@@ -1,20 +1,11 @@
-<div class="join w-fit ring-4" x-data rounded-none>
-    <template x-for="(layer, index) in $store.voteLayers.layers" :key="layer.kind + ':' + (layer.sound_id ?? 'player')">
+<div class="join w-fit ring-4" rounded-none>
+    <template x-for="(slide, index) in carouselSlides" :key="slide.key">
         <button type="button"
-                class="font-mono join-item btn-sm btn btn-neutral border-none w-7.5 h-7 rounded-none"
-                :class="$store.voteLayers.currentIndex === index ? '!text-white text-xl font-extrabold' : ' text-gray-300 text-xs font-light'"
-                @click="$dispatch('carousel-goto', index)">
-            <template x-if="index === 0">
-                <svg xmlns="http://www.w3.org/2000/svg"
-                     viewBox="0 0 24 24"
-                     fill="currentColor"
-                     class="size-4">
-                    <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm8.706-1.442c1.146-.573 2.437.463 2.126 1.706l-.709 2.836.042-.02a.75.75 0 0 1 .67 1.34l-.04.022c-1.147.573-2.438-.463-2.127-1.706l.71-2.836-.042.02a.75.75 0 1 1-.671-1.34l.041-.022ZM12 9a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z" clip-rule="evenodd" />
-                </svg>
-            </template>
-            <template x-if="index !== 0">
-                <span x-text="index"></span>
-            </template>
-        </button>
+                class="font-mono join-item btn btn-sm h-7 min-h-0 rounded-none border-none bg-neutral px-2.5"
+                :class="currentIndex === index ? '!text-white font-extrabold' : 'text-gray-300 font-light'"
+                :aria-label="slide.ariaLabel"
+                :aria-pressed="currentIndex === index"
+                @click="select(index)"
+                x-text="slide.indicatorLabel"></button>
     </template>
 </div>

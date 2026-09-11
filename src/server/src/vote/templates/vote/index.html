@@ -1,111 +1,59 @@
 {% extends "core/base.html" %}
+{% block title %}Vote{% endblock title %}
 {% block content %}
-    <c-core-loader hx_get="{% url 'vote:vote_initial' %}?{{ request.GET.urlencode }}" />
+    {% include "vote/index.html#initial" %}
 {% endblock content %}
+
 {% partialdef initial %}
-    <c-core-content>
-        <div data-core-content-hero class="w-full flex flex-col items-center py-10 gap-10">
-            <div class="motion-preset-blur-down-lg motion-duration-700 motion-delay-700 w-full flex flex-col items-center">
-                <c-core-header />
-            </div>
-            <div class="motion-preset-blur-down motion-duration-700 motion-delay-500 w-full flex flex-col items-center gap-10">
-            {% if player %}<c-vote-player :layers="layers" />{% endif %}
-            <div x-data="{ voted:
-                {% if user.is_authenticated %}
-                    true
-                {% else %}
-                    false
-                {% endif %}
-                }" @vote-success.window="voted = true" @auth-success.window="voted = true" class="h-fit w-full flex flex-col items-center -mt-2">
-                <!-- The voter's identity block, shown once they have voted or
-                     signed in. Nothing occupies the slot before that. -->
-                <div x-cloak x-show="voted" class="w-full max-w-72 flex flex-col gap-1.5 py-6 items-center justify-center">
-                    <c-vote-user-details />
+    <div class="min-h-dvh w-full flex flex-col items-center justify-center gap-6 py-10 motion-delay-200 motion-preset-expand">
+        <div class="motion-preset-blur-down-lg motion-duration-700 motion-delay-700 w-full flex justify-center">
+            <c-core-header />
+        </div>
+        <div class="motion-preset-blur-down motion-duration-700 motion-delay-500 w-full flex flex-col items-center">
+            <div class="h-fit w-full flex flex-col items-center gap-6 -mt-5">
+                <c-vote-navigation-tabs />
+                <div id="vote-tab-content" role="region" aria-label="Selected venue section" class="flex w-full flex-col items-center">
+                    {% include "vote/index.html#tab_vote" %}
                 </div>
-                <div class="flex flex-col items-center gap-10 w-full">
-                    <c-core-deck id="deck">
-                        {% if player %}
-                            {% include "vote/index.html#card" %}
-                        {% else %}
-                            {% include "vote/index.html#help" %}
-                        {% endif %}
-                    </c-core-deck>
-                </div>
-            </div>
             </div>
         </div>
-        {% if player %}
-            <div x-cloak
-                 x-data="{ voted: false }"
-                 @vote-success.window="voted = true"
-                 class="grid w-full transition-[grid-template-rows,opacity] duration-700 ease-out"
-                 :class="voted ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'">
-                <div class="overflow-hidden flex flex-col items-center gap-3 w-full pt-6 pb-2">
-                    <c-vote-recent-voters />
-                </div>
-            </div>
-        {% endif %}
-    </c-core-content>
+    </div>
 {% endpartialdef %}
 
-{% partialdef card %}
-    <c-core-card showExit="false" bgColor="bg-[#1f3f23]" ringColor="ring-[#2d2d2d]">
-        <figure class="relative ring-7 ring-neutral-content/70 rounded-t-md mx-6 mt-7 overflow-visible bg-base-300">
-            <div class="static aspect-square w-full rounded-t-md overflow-hidden">
-                <div class="absolute z-10 top-0 right-1/2 translate-x-1/2 -translate-y-1/2 ring-4 ring-neutral-content/70 flex justify-center rounded-md overflow-hidden bg-white">
-                    <c-vote-card-header>
-                        <c-vote-layer-indicator />
-                    </c-vote-card-header>
+{% partialdef tab_vote %}
+    {% if player %}
+        <article class="w-full max-w-200 text-base-content rounded-3xl overflow-hidden text-left">
+            <div class="px-6 sm:px-12 pb-20">
+                {% if post %}<c-core-post-heading :post="post.post" />{% endif %}
+                <div class="mb-12 mt-8 flex w-full flex-col items-center">
+                    <c-vote-display :layers="layers" :post="post" :choice="choice" :sleeping="sleeping" :throttle_seconds_left="throttle_seconds_left" />
                 </div>
-                <c-vote-card-figure>
-                    <c-vote-layer-carousel />
-                </c-vote-card-figure>
+                {% if post %}
+                    <c-core-post-body :post="post.post" :body_html="body_html" />
+                    <div class="max-w-160 mx-auto mt-12">
+                        <c-core-discussion :comments_page="comments_page" :comment_body="comment_body" :comment_errors="comment_errors" :comment_count="comment_count" :has_commented="has_commented" :pagination_items="pagination_items" :discussion_url="discussion_url" :comment_url="comment_url" :dom_id="dom_id" />
+                    </div>
+                {% endif %}
             </div>
-            <c-vote-arrows />
-        </figure>
-        <c-vote-player-logo />
-        <div class="relative ring-5 ring-amber-600/60 mx-4 mt-4 mb-4 rounded-xs rounded-b-2xl bg-white/65 text-black">
-            <div class="h-30 overflow-y-auto py-2 px-4">
-                <c-vote-card-body>
-                    <!-- djlint:off -->
-                        <template x-if="$store.voteLayers.currentIndex === 0">
-                            <div class="italic font-serif font-extralight text-[8pt] font-stretch-95%">
-                                <p class="py-1 not-italic font-bold font-serif text-xs font-stretch-95%"
-                                   x-text="'[ ' + $store.voteLayers.currentLayer.location + ' ]'"></p>
-                                <span x-text="$store.voteLayers.currentLayer.bio"></span>
-                            </div>
-                        </template>
-                        <template x-if="$store.voteLayers.currentIndex !== 0">
-                            <div class="italic font-serif font-extralight text-[8pt] font-stretch-95%">
-                                <p class="py-1 not-italic font-bold font-serif text-xs font-stretch-95%"
-                                   x-text="'[ ' + $store.voteLayers.currentLayer.tags + ' ]'"></p>
-                                <span x-text="$store.voteLayers.currentLayer.flavor"></span>
-                            </div>
-                        </template>
-                    <!-- djlint:on -->
-                </c-vote-card-body>
-            </div>
-            <div class="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-neutral-content/80 to-transparent rounded-b-2xl">
-            </div>
-        </div>
-        <c-vote-overlay :throttle_seconds_left="throttle_seconds_left" />
-        <div class="absolute z-30 bottom-0 left-1/2 -translate-x-1/2 ring-6 ring-[#2d2d2d]/60 drop-shadow-2xl flex justify-center rounded-t-2xl overflow-hidden bg-base-100 w-fit">
-            <c-vote-button :choice="choice" />
-        </div>
-    </c-core-card>
+        </article>
+    {% else %}
+        <c-core-deck id="deck">{% include "vote/index.html#help" %}</c-core-deck>
+    {% endif %}
+{% endpartialdef %}
+
+{% partialdef tab_about %}
+    <c-app-about-article />
 {% endpartialdef %}
 
 {% partialdef post_login %}
-    <c-vote-user-details oob="true" />
+    <c-core-header oob="true" />
 {% endpartialdef %}
 
 {% partialdef help %}
     <c-core-card showExit="false">
         <div class="p-6 text-base-content">
-            <h2 class="text-xl font-serif">How voting works</h2>
-            <p class="mt-3 text-sm opacity-80">
-                Visit a player URL with <code>?player=&lt;token&gt;&amp;choice=1</code> to upvote, or <code>choice=0</code> to downvote.
-            </p>
+            <h2 class="text-xl font-serif">Find your venue</h2>
+            <p class="mt-3 text-sm opacity-80">Tap a cosound tag at your venue to see its current sounds and join the conversation.</p>
         </div>
     </c-core-card>
 {% endpartialdef %}
