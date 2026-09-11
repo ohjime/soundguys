@@ -14,42 +14,67 @@ services:
       timeout: 5s
       retries: 10
 
+  redis:                                    # transient player notifications; internal network only
+    image: redis:8-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no",
+              "--maxmemory", "32mb", "--maxmemory-policy", "noeviction"]
+    mem_limit: 64m                           # leave room for Redis overhead on the 1 GB box
+    tmpfs: [/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   web:
     build: { context: ./src/server }
     image: cosound-web:latest
     env_file: [env/.env]
+    environment:
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
     command: sh -c "gunicorn config.asgi:application -k uvicorn_worker.UvicornWorker
                     --bind 0.0.0.0:8000 --workers $${WEB_CONCURRENCY:-1} --chdir src
                     --access-logfile - --log-level warning"
     expose: ["8000"]
     depends_on:
       db: { condition: service_healthy }
+      redis: { condition: service_healthy }
       release: { condition: service_completed_successfully }
     restart: unless-stopped
 
   release:                                  # one-shot: migrate + cache table, runs on every `up`
     image: cosound-web:latest
     env_file: [env/.env]
+    environment:
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
     command: sh -c "python src/main.py migrate --noinput && python src/main.py createcachetable && python src/main.py bootstrap_admin"
     depends_on:
       db: { condition: service_healthy }
+      redis: { condition: service_healthy }
     restart: "no"
 
   worker:                                   # django-tasks background queue
     image: cosound-web:latest
     env_file: [env/.env]
+    environment:
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
     command: python src/main.py db_worker --no-reload
     depends_on:
       db: { condition: service_healthy }
+      redis: { condition: service_healthy }
       release: { condition: service_completed_successfully }
     restart: unless-stopped
 
   scheduler:                                # prediction refresh loop (internal :9000)
     image: cosound-web:latest
     env_file: [env/.env]
+    environment:
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
     command: python src/main.py refresh 0.0.0.0:9000
     depends_on:
       db: { condition: service_healthy }
+      redis: { condition: service_healthy }
       release: { condition: service_completed_successfully }
     restart: unless-stopped
 

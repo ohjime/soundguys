@@ -1,7 +1,6 @@
 import os
 import re
 import subprocess
-from pathlib import Path
 from django.core.management.base import CommandError, LabelCommand
 
 
@@ -12,6 +11,14 @@ def extract_server_url_from_procfile(path: str) -> str | None:
         m = re.search(r"runserver\s+([\w\.-]+):(\d+)", content)
         if m:
             host, port = m.group(1), m.group(2)
+            return f"http://{host}:{port}"
+        m = re.search(r"^\w+:.*\buvicorn\s+.*$", content, re.MULTILINE)
+        if m:
+            command = m.group(0)
+            host_match = re.search(r"--host(?:=|\s+)([\w.-]+)", command)
+            port_match = re.search(r"--port(?:=|\s+)(\d+)", command)
+            host = host_match.group(1) if host_match else "127.0.0.1"
+            port = port_match.group(1) if port_match else "8000"
             return f"http://{host}:{port}"
     except OSError:
         pass
@@ -26,8 +33,8 @@ Command argument is missing, use one of:
   runserver   - start Django + Vite via Honcho
   dev         - alias of runserver
 Examples:
-  uv run lib/main.py proc build
-  uv run lib/main.py proc runserver
+  uv run src/main.py proc build
+  uv run src/main.py proc runserver
 """
 
     def add_arguments(self, parser):
@@ -54,12 +61,12 @@ Examples:
             help="Package script name for build (default: build)",
         )
         parser.add_argument(
-            "--port", default="8000", help="Django dev server port (default: 8000)"
+            "--port", default="8000", help="ASGI dev server port (default: 8000)"
         )
         parser.add_argument(
             "--noreload",
             action="store_true",
-            help="Disable Django autoreloader (avoids rare double bind)",
+            help="Disable the Uvicorn development autoreloader",
         )
 
     def handle(self, *labels, **options):
@@ -84,7 +91,7 @@ Examples:
         procfile = options["procfile"]
         if not os.path.exists(procfile):
             self._create_procfile(procfile, options)
-        self._announce(procfile, "Starting Cosound Backend in Production Mode")
+        self._announce(procfile, "Starting Cosound Backend")
         self._run(
             ["honcho", "-f", procfile, "start"],
             "Failed to start Honcho",
@@ -132,20 +139,18 @@ Examples:
             "bun": f"bun run {vite_script}",
         }[pm]
 
-        cwd = Path.cwd()
-        if (cwd / "lib" / "main.py").exists():
-            base = "uv run lib/main.py runserver"
-        elif (cwd / "manage.py").exists():
-            base = "uv run manage.py runserver"
-        else:
-            base = "uv run python -m django runserver"
+        base = (
+            "PYTHONUNBUFFERED=1 uv run uvicorn config.asgi_dev:application "
+            f"--app-dir src --host 0.0.0.0 --port {port}"
+        )
 
-        if noreload:
-            base += " --noreload"
+        if not noreload:
+            base += " --reload --reload-dir src"
 
-        django_line = f"django: {base} 0.0.0.0:{port}"
-        content = f"""{django_line}
-vite:   {vite_cmd}
+        content = f"""vite: cd vite && {vite_cmd} -- --host
+server: {base}
+worker: PYTHONUNBUFFERED=1 uv run src/main.py db_worker --no-reload
+tasks: PYTHONUNBUFFERED=1 uv run src/main.py refresh 0.0.0.0:9000
 """
         with open(path, "w") as f:
             f.write(content)

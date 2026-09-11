@@ -29,7 +29,7 @@ dependencies = [
     "django-tasks>=0.11.0",
     "django-pydantic-field>=0.5.1",
     "pgvector>=0.4.2",
-    "uvicorn>=0.40.0",
+    "uvicorn[standard]>=0.40.0",
     "uvicorn-worker>=0.4.0",
     "gunicorn>=23.0.0",
     "honcho>=2.0.0",
@@ -39,6 +39,8 @@ dependencies = [
     "django-taggit>=6.1.0",
     "markdown>=3.10.3",
     "nh3>=0.3.6",
+    "channels>=4.3,<5",
+    "channels-redis>=4.3,<5",
 ]
 
 

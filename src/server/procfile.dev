@@ -1,4 +1,4 @@
 vite: cd vite && npm run dev -- --host
-server: PYTHONUNBUFFERED=1 uv run src/main.py runserver 0.0.0.0:8000
+server: PYTHONUNBUFFERED=1 uv run uvicorn config.asgi_dev:application --app-dir src --host 0.0.0.0 --port 8000 --reload --reload-dir src
 worker: PYTHONUNBUFFERED=1 uv run src/main.py db_worker --no-reload
 tasks: PYTHONUNBUFFERED=1 uv run src/main.py refresh 0.0.0.0:9000

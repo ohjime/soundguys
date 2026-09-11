@@ -31,6 +31,7 @@ else ifdef run
 		&& $(run)
 else
 	@reset
+	@echo "Player WebSockets require Redis: run 'make redis' first, or configure REDIS_URL."
 	@chmod +x bin/clean_honcho.sh
 	@echo "Cleaning Orphaned Django Processes..."
 	@./bin/clean_honcho.sh
@@ -57,6 +58,20 @@ else
 	@cd src/server \
 		&& uv run src/main.py proc runserver --procfile procfile.dev
 endif
+
+# Standalone Redis for a native development server; requires Docker Compose.
+DC_REDIS = docker compose -f docker/docker-compose.redis.yml --project-directory . --project-name cosound-redis-dev
+
+.PHONY: redis redis-down redis-logs
+
+redis:
+	$(DC_REDIS) up -d --wait
+
+redis-down:
+	$(DC_REDIS) down
+
+redis-logs:
+	$(DC_REDIS) logs -f redis
 
 superuser:
 	@echo "Creating superuser for Central Backend..."

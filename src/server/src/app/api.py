@@ -1,3 +1,4 @@
+from django.conf import settings
 from ninja import NinjaAPI
 from ninja.security import APIKeyHeader
 from ninja.throttling import AuthRateThrottle
@@ -12,15 +13,22 @@ class PlayerTokenAuth(APIKeyHeader):
 
     def authenticate(self, request, key):
         try:
-            return Player.objects.select_related("post").get(token=key)
+            return Player.objects.select_related("post", "manager").get(token=key)
         except Player.DoesNotExist:
             return None
+
+
+class PlayerRateThrottle(AuthRateThrottle):
+    """Renames and identical player names must not change/share rate limits."""
+
+    def get_cache_key(self, request):
+        return self.cache_format % {"scope": "player", "ident": request.auth.pk}
 
 
 @api.get(
     "/manifest",
     auth=PlayerTokenAuth(),
-    throttle=[AuthRateThrottle("10/m")],
+    throttle=[PlayerRateThrottle(settings.PLAYER_API_RATE)],
 )
 def get_manifest(request) -> dict[str, str]:
     """Return the player's sound library as {sound_id: remote_url}."""
@@ -35,7 +43,7 @@ def get_manifest(request) -> dict[str, str]:
 @api.get(
     "/cosound",
     auth=PlayerTokenAuth(),
-    throttle=[AuthRateThrottle("10/m")],
+    throttle=[PlayerRateThrottle(settings.PLAYER_API_RATE)],
 )
 def get_cosound(request) -> dict[str, float]:
     """Return the player's latest cosound as {sound_id: gain}."""
@@ -49,7 +57,7 @@ def get_cosound(request) -> dict[str, float]:
 @api.get(
     "/player",
     auth=PlayerTokenAuth(),
-    throttle=[AuthRateThrottle("10/m")],
+    throttle=[PlayerRateThrottle(settings.PLAYER_API_RATE)],
 )
 def get_player(request) -> dict:
     """Return player details and the currently playing cosound layers."""
@@ -58,9 +66,16 @@ def get_player(request) -> dict:
         [layer.sound_id for layer in player.playing.layers]
     )
     return {
+        "player_id": player.pk,
         "name": player.name,
+        "manager_id": player.manager_id,
         "manager": player.manager.name,
         "location": player.location,
+        "bio": player.bio,
+        "photo": request.build_absolute_uri(player.photo.url) if player.photo else "",
+        "post_id": player.post_id,
+        "sleeping": player.sleeping,
+        "activated_at": player.activated_at.isoformat() if player.activated_at else None,
         "layers": [
             {
                 "sound_id": layer.sound_id,
@@ -86,4 +101,3 @@ def get_player(request) -> dict:
 # mount points — "/api/" in config.urls and "/" in config.urls_api (the
 # api.cosound.ca subdomain) — must reuse this single tuple.
 api_urls = api.urls
-

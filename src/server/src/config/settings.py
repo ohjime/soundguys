@@ -229,6 +229,22 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 WSGI_APPLICATION = "config.wsgi.application"
+ASGI_APPLICATION = "config.asgi.application"
+
+# All web and prediction-worker processes share this notification transport.
+# Redis holds no authoritative player state; clients reconcile through the API.
+REDIS_URL = os.environ.get("REDIS_URL", "redis://127.0.0.1:6379/0")
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [{"address": REDIS_URL, "socket_connect_timeout": 2}],
+            "expiry": 60,
+            "group_expiry": 120,
+        },
+    },
+}
+PLAYER_API_RATE = os.environ.get("PLAYER_API_RATE", "120/m")
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")

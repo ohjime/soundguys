@@ -1,9 +1,9 @@
 #!/bin/zsh
 # kill_orphaned_dev_servers.sh
-# Kills any Django processes (runserver, refresh, db_worker) running via main.py or manage.py
+# Kills Django development processes and the Uvicorn development reloader.
 
 # Find matching processes (exclude the grep process itself via [] trick)
-PIDS=$(ps aux | grep -E '[m]ain\.py (runserver|refresh|db_worker)|[m]anage\.py (runserver|refresh|db_worker)|[g]unicorn config\.asgi' | awk '{print $2}')
+PIDS=$(ps aux | grep -E '[m]ain\.py (runserver|refresh|db_worker)|[m]anage\.py (runserver|refresh|db_worker)|[u]vicorn config\.asgi_dev:application|[g]unicorn config\.asgi' | awk '{print $2}')
 
 if [[ -n "$PIDS" ]]; then
   echo "$PIDS"
