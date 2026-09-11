@@ -238,7 +238,15 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [{"address": REDIS_URL, "socket_connect_timeout": 2}],
+            "hosts": [{
+                "address": REDIS_URL,
+                "socket_connect_timeout": 2,
+                # Channels blocks for five seconds waiting for notifications.
+                # redis-py's default read timeout can expire first and close
+                # healthy idle sockets. Publish/subscribe operations retain
+                # their application-level timeouts.
+                "socket_timeout": None,
+            }],
             "expiry": 60,
             "group_expiry": 120,
         },
