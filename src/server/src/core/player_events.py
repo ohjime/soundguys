@@ -23,7 +23,7 @@ def player_group_name(player_id):
     return f"player.{player_id}"
 
 
-async def _send_player_changes(player_ids):
+async def _send_player_changes(player_ids, event=None):
     channel_layer = get_channel_layer()
     if channel_layer is None:
         raise RuntimeError("No channel layer configured for player notifications")
@@ -36,7 +36,7 @@ async def _send_player_changes(player_ids):
             *(
                 channel_layer.group_send(
                     player_group_name(player_id),
-                    {"type": "player.changed", "schema_version": 1},
+                    event or {"type": "player.changed", "schema_version": 1},
                 )
                 for player_id in player_ids
             )
@@ -58,3 +58,18 @@ def notify_players_changed(player_ids, *, using=None):
         transaction.on_commit(
             partial(publish_player_changes, player_ids), using=using
         )
+
+
+def publish_player_vote(player_id, vote_id):
+    """A transient acknowledgement; never include listener information."""
+    try:
+        async_to_sync(_send_player_changes)((player_id,), {
+            "type": "player.vote_received", "schema_version": 1,
+            "vote_id": vote_id,
+        })
+    except Exception:
+        logger.warning("Could not publish player vote notification", exc_info=True)
+
+
+def notify_player_vote(player_id, vote_id, *, using=None):
+    transaction.on_commit(partial(publish_player_vote, player_id, vote_id), using=using)

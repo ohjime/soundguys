@@ -84,6 +84,20 @@ class PlayerSocketTests(TransactionTestCase):
             await get_channel_layer().group_send(player_group_name(self.player.pk), {"type": "player.changed"})
             self.assertEqual(await socket.receive_output(), {"type": "websocket.close", "code": 4401})
 
+    async def test_votes_are_private_allowlisted_and_recheck_authorization(self):
+        async with socket_connection(self.player.token) as socket:
+            await self.assert_ready(socket)
+            layer = get_channel_layer()
+            event = {"type": "player.vote_received", "vote_id": 123, "voter": "private"}
+            await layer.group_send(player_group_name(self.other.pk), event)
+            self.assertTrue(await socket.receive_nothing(timeout=0.03))
+            await layer.group_send(player_group_name(self.player.pk), event)
+            message = await socket.receive_output()
+            self.assertJSONEqual(message["text"], {"type": "player.vote_received", "schema_version": 1, "vote_id": 123})
+            await database_sync_to_async(Player.objects.filter(pk=self.player.pk).update)(token="rotated")
+            await layer.group_send(player_group_name(self.player.pk), event)
+            self.assertEqual(await socket.receive_output(), {"type": "websocket.close", "code": 4401})
+
     async def test_idle_subscription_is_renewed_and_rechecks_credentials(self):
         with patch("app.consumers.SUBSCRIPTION_REFRESH_SECONDS", 0.02):
             async with socket_connection(self.player.token) as socket:

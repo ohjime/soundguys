@@ -7,10 +7,21 @@ from django.db.models.signals import post_save
 from django.test import SimpleTestCase, TestCase, override_settings
 
 from core.models import Artist, Manager, Player, Prediction, Sound, User
-from core.player_events import notify_players_changed, publish_player_changes
+from core.player_events import notify_players_changed, publish_player_changes, publish_player_vote
 
 
 class PlayerPublisherTests(SimpleTestCase):
+    @patch("core.player_events.get_channel_layer")
+    def test_vote_event_is_private_and_transport_failure_does_not_fail_vote(self, get_layer):
+        get_layer.return_value = SimpleNamespace(group_send=AsyncMock())
+        publish_player_vote(7, 21)
+        get_layer.return_value.group_send.assert_awaited_once_with(
+            "player.7", {"type": "player.vote_received", "schema_version": 1, "vote_id": 21},
+        )
+        get_layer.return_value.group_send.side_effect = ConnectionError("offline")
+        with self.assertLogs("core.player_events", level="WARNING"):
+            publish_player_vote(7, 22)
+
     @patch("core.player_events.get_channel_layer")
     def test_publishes_only_an_invalidation_to_each_player_group(self, get_layer):
         get_layer.return_value = SimpleNamespace(group_send=AsyncMock())

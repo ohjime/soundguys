@@ -125,6 +125,14 @@ class PlayerConsumer(AsyncJsonWebsocketConsumer):
         # handled by the ASGI server and do not reach this method.
         await self.close(code=1008)
 
+    async def player_vote_received(self, event):
+        vote_id = event.get("vote_id")
+        if type(vote_id) is int and vote_id > 0 and await self._authorized():
+            await self.send_json({
+                "type": "player.vote_received", "schema_version": 1,
+                "vote_id": vote_id,
+            })
+
     async def close(self, code=None, reason=None):
         if not self.close_sent and not self.disconnected:
             self.close_sent = True
