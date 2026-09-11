@@ -16,6 +16,7 @@ TMP_STREAM_DIR = "/tmp/cosound"
 API_BASE_URL = (
     os.environ.get("COSOUND_API_URL", "http://localhost:8000/api").strip().rstrip("/")
 )
+HTTP_TIMEOUT = 15  # Bound a failed request so later refreshes can still run.
 
 
 def _api_get(path: str, api_key: str) -> dict:
@@ -23,7 +24,7 @@ def _api_get(path: str, api_key: str) -> dict:
         f"{API_BASE_URL}{path}",
         headers={"X-API-Key": api_key},
     )
-    with urllib.request.urlopen(request) as response:
+    with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT) as response:
         return json.loads(response.read().decode("utf-8"))
 
 

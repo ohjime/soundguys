@@ -8,7 +8,9 @@ Layout (matches design mock):
 - Sticky footer: mute button, volume control (readout + slider), exit button.
 """
 
+import os
 from datetime import datetime
+from threading import Lock
 
 from rich.text import Text
 
@@ -20,9 +22,13 @@ from textual.reactive import reactive
 from textual.widget import Widget
 from textual.widgets import Button, Static
 
-from app.client import get_player_info
+from app.client import get_latest_manifest, get_player_info, get_sound
+from app.conditioning import condition_manifest
+from app.live import watch_player_changes
 from app.utils import the_love_life_you_wish_you_had
 
+ROOT_DIR = os.path.join(os.path.dirname(__file__), "..", "..")
+CONDITIONED_DIR = os.path.join(ROOT_DIR, "conditioned")
 REFRESH_INTERVAL = 30  # In Seconds
 METER_INTERVAL = 1 / 15  # Peak bar refresh rate
 PEAK_DECAY = 0.82  # Per-tick falloff so bars release smoothly
@@ -30,6 +36,81 @@ PEAK_CURVE = 0.3  # Display exponent (<1 lifts quiet peaks so bars visibly move)
 MAX_HISTORY = 10  # Oldest cosound entries are dropped beyond this
 
 LOGO = the_love_life_you_wish_you_had.strip("\n")
+
+
+def _refresh_missing_manifest_entries(
+    api_key: str,
+    manifest: dict,
+    layers: list,
+    target_fs: int | None,
+) -> None:
+    """Download and condition newly referenced sounds into ``manifest``.
+
+    The startup manifest contains only the collection assigned at that moment.
+    A later cosound can legitimately reference a sound added to the collection,
+    so refresh the remote manifest only when a polled layer is not already in the
+    local one.  Conditioning just the missing subset avoids reprocessing known
+    sounds during the polling loop.
+    """
+    missing_ids = tuple(
+        dict.fromkeys(
+            str(layer["sound_id"])
+            for layer in layers
+            if str(layer["sound_id"]) not in manifest
+        )
+    )
+    if not missing_ids:
+        return
+    if target_fs is None:
+        raise RuntimeError("Player output sample rate is unavailable")
+
+    remote_manifest = get_latest_manifest(api_key)
+    unavailable_ids = [
+        sound_id for sound_id in missing_ids if not remote_manifest.get(sound_id)
+    ]
+    if unavailable_ids:
+        joined_ids = ", ".join(unavailable_ids)
+        raise RuntimeError(
+            f"Server manifest does not include requested sound ID(s): {joined_ids}"
+        )
+
+    downloaded = {}
+    for sound_id in missing_ids:
+        remote_path = remote_manifest.get(sound_id)
+        try:
+            downloaded[sound_id] = get_sound(sound_id, remote_path)
+        except Exception as error:
+            raise RuntimeError(
+                f"Could not download sound {sound_id}: {error}"
+            ) from error
+
+    try:
+        conditioned = condition_manifest(downloaded, CONDITIONED_DIR, target_fs)
+    except Exception as error:
+        joined_ids = ", ".join(missing_ids)
+        raise RuntimeError(
+            f"Could not condition requested sound ID(s) {joined_ids}: {error}"
+        ) from error
+
+    unavailable_ids = [
+        sound_id for sound_id in missing_ids if not conditioned.get(sound_id)
+    ]
+    if unavailable_ids:
+        joined_ids = ", ".join(unavailable_ids)
+        raise RuntimeError(
+            f"Conditioning did not produce requested sound ID(s): {joined_ids}"
+        )
+
+    manifest.update(conditioned)
+
+
+def _queue_manifest_layers(manifest: dict, layers: list, player) -> None:
+    """Queue every locally available layer and start its transition."""
+    for layer in layers:
+        local_path = manifest.get(str(layer["sound_id"]))
+        if local_path:
+            player.queue_sound(local_path, layer["gain"])
+    player.dequeue_cosound()
 
 
 def form_row(label: str, value: str) -> Text:
@@ -153,20 +234,32 @@ class LayerRow(Horizontal):
     """One playing layer: change icon, name + transition, gain, and a live peak bar."""
 
     def __init__(
-        self, title: str, gain: float, sound_path: str | None, change: str = "same"
+        self, title: str, gain: float, sound_path: str | None, change: str = "same",
+        *, sound_id: str | None = None, artist: str = "",
     ) -> None:
         super().__init__(classes="layer-row")
         self._title = title
+        self._artist = artist
         self._gain = gain
         self._change = change
         self.sound_path = sound_path
+        self.sound_id = sound_id
+
+    def _label(self) -> Text:
+        return Text(f"{self._title} — {self._artist}" if self._artist else self._title)
+
+    def update_metadata(self, layer: dict) -> None:
+        self._title = layer.get("title") or f"Sound {layer['sound_id']}"
+        self._artist = layer.get("artist") or ""
+        for label in self.query(".layer-title"):
+            label.update(self._label())
 
     def compose(self) -> ComposeResult:
         yield Static(
             CHANGE_SYMBOLS[self._change], classes=f"layer-change -{self._change}"
         )
         with Horizontal(classes="layer-name"):
-            yield Static(self._title, classes="layer-title")
+            yield Static(self._label(), classes="layer-title")
             yield Static(
                 TRANSITION_LABELS[self._change],
                 classes=f"layer-transition -{self._change}",
@@ -215,7 +308,17 @@ class CosoundEntry(Vertical):
                     change=self._change_of(
                         gain, self._previous_gains.get(str(layer["sound_id"]))
                     ),
+                    sound_id=str(layer["sound_id"]),
+                    artist=layer.get("artist") or "",
                 )
+
+    def update_metadata(self, layers: list) -> None:
+        """Refresh labels without adding history or starting an audio transition."""
+        self._layers = layers
+        by_id = {str(layer["sound_id"]): layer for layer in layers}
+        for row in self.query(LayerRow):
+            if row.sound_id in by_id:
+                row.update_metadata(by_id[row.sound_id])
 
     def mark_history(self) -> None:
         """Demote this entry once a newer cosound starts playing."""
@@ -463,9 +566,13 @@ class CosoundPlayerApp(App):
         self.api_key = api_key
         self.manifest = manifest
         self.player = player
+        self.player_info: dict = {}
         self._cosound_signature = None
         self._current_entry: CosoundEntry | None = None
         self._last_gains: dict[str, float] = {}
+        self._refresh_generation = 0
+        self._refresh_worker_running = False
+        self._refresh_lock = Lock()
 
     def compose(self) -> ComposeResult:
         with Horizontal(id="header"):
@@ -474,6 +581,7 @@ class CosoundPlayerApp(App):
                 yield Static(form_row("PLAYER", "—"), id="player-name")
                 yield Static(form_row("MANAGED BY", "—"), id="managed-by")
                 yield Static(form_row("LAST UPDATED ON", "Connecting…"), id="last-updated")
+                yield Static(form_row("LIVE UPDATES", "Connecting…"), id="live-status")
                 yield Static(
                     form_row("SPEAKER SYSTEM", self._speaker_summary()),
                     id="speaker-system",
@@ -502,6 +610,18 @@ class CosoundPlayerApp(App):
         self.set_interval(METER_INTERVAL, self._update_meters)
         self.set_interval(REFRESH_INTERVAL, self.refresh_cosound)
         self.refresh_cosound()
+        self._watch_live_updates()
+
+    @work(group="live-updates", exclusive=True, exit_on_error=False)
+    async def _watch_live_updates(self) -> None:
+        # Async Textual workers share the UI event loop and are cancelled when
+        # the app exits. HTTP, downloads, and audio remain in the refresh thread.
+        await watch_player_changes(
+            self.api_key, self.refresh_cosound, self._show_live_status
+        )
+
+    def _show_live_status(self, status: str) -> None:
+        self.query_one("#live-status", Static).update(form_row("LIVE UPDATES", status))
 
     # --- Periodic refresh (network + audio transition, off the UI thread) ---
 
@@ -514,25 +634,84 @@ class CosoundPlayerApp(App):
             )
         )
 
-    @work(thread=True, exclusive=True, group="refresh")
     def refresh_cosound(self) -> None:
-        self.call_from_thread(self._show_refreshing)
+        """Request a refresh, coalescing requests that arrive during one."""
+        with self._refresh_lock:
+            self._refresh_generation += 1
+            start_worker = not self._refresh_worker_running
+            if start_worker:
+                self._refresh_worker_running = True
+
+        self._show_refreshing()
+        if start_worker:
+            self._refresh_cosound_worker()
+
+    @work(thread=True, group="refresh")
+    def _refresh_cosound_worker(self) -> None:
+        self._run_refresh_loop()
+
+    def _run_refresh_loop(self) -> None:
+        """Run one refresh at a time and then process only the latest pending one."""
+        stopped_normally = False
         try:
-            info = get_player_info(self.api_key)
-        except Exception as error:
-            self.call_from_thread(self._show_refresh_error, error)
-            return
+            while True:
+                with self._refresh_lock:
+                    generation = self._refresh_generation
+
+                try:
+                    self._run_refresh()
+                except Exception as error:
+                    self.call_from_thread(
+                        self._show_refresh_error_if_latest, generation, error
+                    )
+
+                with self._refresh_lock:
+                    if generation == self._refresh_generation:
+                        self._refresh_worker_running = False
+                        stopped_normally = True
+                        return
+
+                self.call_from_thread(self._show_refreshing)
+        finally:
+            # An unexpected worker failure must not leave future refreshes
+            # permanently coalesced into a worker that no longer exists.
+            if not stopped_normally:
+                with self._refresh_lock:
+                    self._refresh_worker_running = False
+
+    def _run_refresh(self) -> None:
+        """Fetch, prepare, and apply one serialized player refresh."""
+        info = get_player_info(self.api_key)
+        manifest = dict(self.manifest)
 
         # Same cosound as last time: leave audio and the history list alone.
         changed = self._signature_of(info) != self._cosound_signature
         if changed:
-            for layer in info.get("layers", []):
-                local_path = self.manifest.get(str(layer["sound_id"]))
-                if local_path:
-                    self.player.queue_sound(local_path, layer["gain"])
-            self.player.dequeue_cosound()
+            layers = info.get("layers", [])
+            _refresh_missing_manifest_entries(
+                self.api_key,
+                manifest,
+                layers,
+                getattr(self.player, "fs", None),
+            )
 
+            # Audio loading stays on this worker thread. Since this is the only
+            # refresh worker, an older transition always finishes before the
+            # latest coalesced request is fetched and applied.
+            self.manifest.update(manifest)
+            _queue_manifest_layers(self.manifest, layers, self.player)
+
+        # Textual waits for this UI callback to finish, so the worker cannot
+        # begin a newer refresh until this state is visible.
         self.call_from_thread(self._apply_state, info, changed)
+
+    def _show_refresh_error_if_latest(
+        self, generation: int, error: Exception
+    ) -> None:
+        with self._refresh_lock:
+            if generation != self._refresh_generation:
+                return
+            self._show_refresh_error(error)
 
     @staticmethod
     def _timestamp(now: datetime) -> str:
@@ -552,19 +731,20 @@ class CosoundPlayerApp(App):
         self.log(f"Refresh failed: {error}")
 
     def _apply_state(self, info: dict, changed: bool) -> None:
-        if info.get("name"):
-            self.query_one("#player-name", Static).update(
-                form_row("PLAYER", info["name"])
-            )
-        if info.get("manager"):
-            self.query_one("#managed-by", Static).update(
-                form_row("MANAGED BY", info["manager"])
-            )
+        self.player_info = info
+        self.query_one("#player-name", Static).update(
+            form_row("PLAYER", info.get("name") or "—")
+        )
+        self.query_one("#managed-by", Static).update(
+            form_row("MANAGED BY", info.get("manager") or "—")
+        )
         self.query_one("#last-updated", Static).update(
             form_row("LAST UPDATED ON", self._timestamp(datetime.now()))
         )
 
         if not changed:
+            if self._current_entry is not None:
+                self._current_entry.update_metadata(info.get("layers", []))
             return
         self._cosound_signature = self._signature_of(info)
 
