@@ -7,7 +7,7 @@
                 <a href="{{ previous_post.get_absolute_url }}"
                    class="list-row items-center transition-colors hover:bg-base-200 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary">
                     <div class="list-col-grow min-w-0">
-                        <p class="truncate font-semibold">{{ previous_post.title }}</p>
+                        <p class="truncate font-semibold">{{ previous_post.post.title }}</p>
                     </div>
                     <span class="badge badge-ghost whitespace-nowrap">
                         {{ previous_post.comment_count }} comment{{ previous_post.comment_count|pluralize }}
@@ -24,7 +24,7 @@
                 <div aria-hidden="true"
                      class="list-row items-center opacity-45 blur-[2px] select-none">
                     <div class="list-col-grow min-w-0">
-                        <p class="truncate font-semibold">{{ locked_post.title }}</p>
+                        <p class="truncate font-semibold">{{ locked_post.post.title }}</p>
                     </div>
                     <span class="badge badge-ghost whitespace-nowrap">
                         {{ locked_post.comment_count }} comment{{ locked_post.comment_count|pluralize }}

@@ -1,40 +1,20 @@
-from django.core.paginator import Paginator
+"""Route shared comments through the public Explore post."""
 
-from explore.forms import CommentForm
+from django.urls import reverse
 
-
-COMMENTS_PER_PAGE = 10
+from core.discussion import COMMENTS_PER_PAGE
+from core.discussion import build_discussion_context as build_post_discussion_context
 
 
 def build_discussion_context(post, user, page_number=1, form=None):
-    form = form or CommentForm()
-    comments = post.comments.select_related("user").all()
-    paginator = Paginator(comments, COMMENTS_PER_PAGE)
-    page = paginator.get_page(page_number)
-    has_commented = bool(
-        getattr(user, "is_authenticated", False)
-        and post.comments.filter(user=user).exists()
+    context = build_post_discussion_context(
+        post.post,
+        user,
+        page_number,
+        form,
+        discussion_url=reverse("explore:discussion", kwargs={"slug": post.slug}),
+        comment_url=reverse("explore:create_comment", kwargs={"slug": post.slug}, query={"post": post.post.slug}),
+        dom_id=f"explore-discussion-{post.pk}",
     )
-    pagination_items = []
-    for value in paginator.get_elided_page_range(
-        page.number, on_each_side=1, on_ends=1
-    ):
-        if value == paginator.ELLIPSIS:
-            pagination_items.append({"ellipsis": True})
-        else:
-            pagination_items.append(
-                {"number": value, "current": value == page.number}
-            )
-
-    return {
-        "post": post,
-        # Cotton components can be nested (home/index -> article -> discussion).
-        # Pass plain values through those boundaries rather than a BoundField,
-        # which loses its widget rendering at the second component hop.
-        "comment_body": form["body"].value() or "",
-        "comment_errors": [str(error) for error in form["body"].errors],
-        "comments_page": page,
-        "comment_count": paginator.count,
-        "has_commented": has_commented,
-        "pagination_items": pagination_items,
-    }
+    context["post"] = post
+    return context

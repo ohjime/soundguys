@@ -11,6 +11,7 @@ from django.db import transaction
 from django.http import HttpResponseNotAllowed, HttpResponseRedirect
 from django.urls import path, reverse
 from django.utils.safestring import mark_safe
+from django.utils.html import format_html
 from django.template.loader import render_to_string
 from django_file_form.model_admin import FileFormAdmin
 from django.contrib.auth.models import Group
@@ -20,8 +21,9 @@ from unfold.contrib.filters.admin import FieldTextFilter
 from unfold.forms import AdminPasswordChangeForm, UserChangeForm, UserCreationForm
 from taggit.models import Tag
 
-from core.models import Manager, User, Sound, Player, Listener, Cosound, Artist, Set
-from core.forms import SoundForm
+from core.models import Manager, User, Sound, Player, Listener, Cosound, Artist, Set, Comment, LocalPost, Post, Prediction
+from core.forms import LocalPostForm, SoundForm
+from core.post_admin import PostAdmin, PostLinkAdmin
 
 
 class ListenerInline(StackedInline):
@@ -201,12 +203,28 @@ class SoundAdmin(FileFormAdmin, ModelAdmin, ImportExportModelAdmin):  # type: ig
     ]
 
 
+admin.site.register(Post, PostAdmin)
+
+
+@admin.register(LocalPost)
+class LocalPostAdmin(PostLinkAdmin):
+    form = LocalPostForm
+    fields = ["post", "edit_post", "collection"]
+    list_display = ["post"]
+    filter_horizontal = ["collection"]
+
+
 @admin.register(Player)
 class PlayerAdmin(ModelAdmin):
-    list_display = ["name", "manager"]
-    list_filter = [("name", FieldTextFilter)]
-    filter_horizontal = ["sounds"]
-    readonly_fields = ["playing_display", "token_display"]
+    list_display = ["name", "manager", "sleeping", "activated_at"]
+    list_filter = [("name", FieldTextFilter), "sleeping"]
+    autocomplete_fields = ["post"]
+    readonly_fields = [
+        "playing_display",
+        "token_display",
+        "post_edit_link",
+        "activated_at",
+    ]
     compressed_fields = True
     fieldsets = [
         (
@@ -218,28 +236,56 @@ class PlayerAdmin(ModelAdmin):
                     "bio",
                     "manager",
                     "location",
+                    "sleeping",
+                    "activated_at",
                 ],
             },
         ),
         (
-            "Player Sound",
+            "Player Post",
             {
                 "fields": [
-                    "sounds",
+                    "post",
+                    "post_edit_link",
                     "playing_display",
                 ],
             },
         ),
     ]
 
-    def formfield_for_manytomany(self, db_field, request, **kwargs):
-        if db_field.name == "sounds":
-            kwargs["label"] = "Sound library"
-        return super().formfield_for_manytomany(db_field, request, **kwargs)
+    @admin.display(description="Writing and sound collection")
+    def post_edit_link(self, obj):
+        if not obj or not obj.post_id:
+            return "Save the Player to create its post, or choose an existing local post."
+        return format_html(
+            '<a href="{}">Edit {} — writing and sound collection</a>',
+            reverse("admin:core_localpost_change", args=[obj.post_id]),
+            obj.post.post.title,
+        )
 
     def get_form(self, request, obj=None, change=False, **kwargs):
         self._current_request = request
         return super().get_form(request, obj, change, **kwargs)
+
+    def save_model(self, request, obj, form, change):
+        sleeping_changed = "sleeping" in form.changed_data
+        if sleeping_changed and form.cleaned_data["sleeping"]:
+            obj.playing = Prediction.new()
+            obj.activated_at = None
+
+        super().save_model(request, obj, form, change)
+
+        if sleeping_changed and not form.cleaned_data["sleeping"]:
+            from core.predict import activate_player
+
+            prediction = activate_player(obj)
+            if prediction is None:
+                messages.warning(
+                    request,
+                    "This player stayed asleep because its collection is empty.",
+                )
+            else:
+                obj.announce(prediction)
 
     def get_urls(self):
         urls = super().get_urls()
@@ -539,3 +585,11 @@ class CosoundAdmin(ModelAdmin):
     # is an error on Postgres. The hashid is the other handle a person has on
     # a specific mix, and it is a text column, so it takes the usual match.
     search_fields = ["=id", "hashid"]
+
+
+@admin.register(Comment)
+class CommentAdmin(ModelAdmin):
+    list_display = ["user", "post", "created_at"]
+    list_filter = ["created_at"]
+    search_fields = ["user__username", "post__title", "body"]
+    readonly_fields = ["post", "user", "body", "created_at"]

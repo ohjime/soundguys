@@ -1,0 +1,37 @@
+<c-vars post="" body_html="" />
+        <!-- Reading column copied from app_about_article.html. All prose
+             styling must live on this wrapper: Tailwind only scans source
+             files, so classes inside the runtime-rendered markdown HTML
+             would never be generated. -->
+        <div
+            class="max-w-150 mx-auto font-sans text-[18px] leading-[160%] [&_p]:mb-[1.5em] [&_a]:underline [&_a]:underline-offset-2 [&_a]:decoration-[#b0aea5] hover:[&_a]:decoration-[#141413] [&_h2]:text-[25px] sm:[&_h2]:text-[34px] [&_h2]:font-semibold [&_h2]:leading-[115%] [&_h2]:tracking-[-0.015em] [&_h2]:mt-16 [&_h2]:mb-8 [&_h3]:text-[21px] [&_h3]:font-semibold [&_h3]:leading-[120%] [&_h3]:mt-10 [&_h3]:mb-4 [&_ul]:mb-[1.5em] [&_ul]:pl-6 [&_ul]:list-disc [&_ol]:mb-[1.5em] [&_ol]:pl-6 [&_ol]:list-decimal [&_li]:mb-3 [&_code]:font-sans [&_code]:text-[14px] [&_code]:bg-base-300 [&_code]:rounded [&_code]:px-1.5 [&_code]:py-0.5 [&_table]:w-full [&_table]:text-[15px] [&_table]:font-sans [&_table]:border-collapse [&_th]:text-left [&_th]:font-semibold [&_th]:py-2 [&_th]:pr-4 [&_th]:border-b [&_th]:border-base-content/20 [&_td]:align-top [&_td]:py-2 [&_td]:pr-4 [&_td]:border-b [&_td]:border-base-content/10 [&_blockquote]:border-l-4 [&_blockquote]:border-base-content/20 [&_blockquote]:pl-4 [&_blockquote]:italic">
+            <p class="font-semibold">{{ post.greeting_style }}</p>
+            <div class="explore-font text-xl" style="font-family: {{ post.font_css_stack }}">{{ body_html }}</div>
+            {% if post.authors %}
+            <!-- The credits, following the same rule as the artist on a
+                 layer (core_sound_carousel.html): an author's URL is optional
+                 and points wherever they keep their own work — their site, a
+                 profile, a label page — so cosound never has to host a page
+                 about them. Having one makes the name a link, opened in a new
+                 tab because a post is read with its mix playing and leaving in
+                 this tab would stop it. Having none leaves a plain name, since
+                 there is nowhere to send anybody.
+
+                 `noopener` without `noreferrer`, so an author can see that the
+                 visit came from here. The writing's own outbound links keep
+                 both (core/renderer.py) — those go anywhere at all. -->
+            <div class="mt-6 flex flex-col gap-2 font-sans text-sm not-italic text-right">
+                {% for author in post.authors %}
+                <p class="!mb-0">
+                    {% if author.url %}
+                    <a class="font-semibold" href="{{ author.url }}" target="_blank"
+                        rel="noopener">{{ author.name }}</a>
+                    {% else %}
+                    <span class="font-semibold">{{ author.name }}</span>
+                    {% endif %}
+                    <span class="text-base-content/55">· {{ author.role }}</span>
+                </p>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>

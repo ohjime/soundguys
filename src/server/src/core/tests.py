@@ -1,4 +1,5 @@
 from datetime import timedelta
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from django.contrib.auth.models import Permission
@@ -9,8 +10,19 @@ from django.utils import timezone
 from taggit.models import Tag
 
 from core.management.commands.refresh import Command, REFRESH_INTERVAL_SECONDS
-from core.models import Cosound, Listener, Manager, Player, Prediction, Sound, User
-from core.predict import _predict_for_player
+from core.models import (
+    Post,
+    Artist,
+    Cosound,
+    Listener,
+    LocalPost,
+    Manager,
+    Player,
+    Prediction,
+    Sound,
+    User,
+)
+from core.predict import ACTIVITY_WINDOW, _predict_for_player, activate_player
 from vote.models import Vote
 
 
@@ -19,7 +31,7 @@ class RefreshSchedulerTests(SimpleTestCase):
         "core.management.commands.refresh.time.sleep",
         side_effect=KeyboardInterrupt,
     )
-    @patch("core.management.commands.refresh.Player.objects.all", return_value=[])
+    @patch("core.management.commands.refresh.Player.objects.filter", return_value=[])
     @patch("core.management.commands.refresh._get_predictor")
     def test_waits_thirty_seconds_between_player_refreshes(
         self,
@@ -32,7 +44,29 @@ class RefreshSchedulerTests(SimpleTestCase):
 
         self.assertEqual(stopped.exception.code, 0)
         self.assertEqual(REFRESH_INTERVAL_SECONDS, 30)
+        _players.assert_called_once_with(sleeping=False)
         sleep.assert_called_once_with(30)
+
+    @patch(
+        "core.management.commands.refresh.time.sleep",
+        side_effect=KeyboardInterrupt,
+    )
+    @patch("core.management.commands.refresh.Player.objects.filter")
+    @patch("core.management.commands.refresh._get_predictor")
+    def test_only_awake_players_are_enqueued(
+        self,
+        get_predictor,
+        players,
+        _sleep,
+    ):
+        awake = SimpleNamespace(pk=7, name="Awake room")
+        players.return_value = [awake]
+
+        with self.assertRaises(SystemExit):
+            Command().handle()
+
+        players.assert_called_once_with(sleeping=False)
+        get_predictor.return_value.enqueue.assert_called_once_with(player_id=awake.pk)
 
 
 class ListenerTestPointAdminTests(TestCase):
@@ -191,6 +225,8 @@ class PredictorTests(TestCase):
         )
         self.manager = Manager.objects.create(user=manager_user, name="Manager")
         self.player = Player.objects.create(manager=self.manager, name="Player")
+        Player.objects.filter(pk=self.player.pk).update(sleeping=False)
+        self.player.sleeping = False
         self.cosound = Cosound.objects.create(hashid="vote", hashset="vote")
         self.listener_number = 0
 
@@ -233,7 +269,7 @@ class PredictorTests(TestCase):
     def test_only_voters_from_the_last_five_minutes_are_active(self):
         rock = self.make_sound("rock", "rock")
         jazz = self.make_sound("jazz", "jazz")
-        self.player.sounds.add(rock, jazz)
+        self.player.post.collection.add(rock, jazz)
         recent_listener = self.make_listener(rock)
         stale_listener = self.make_listener(jazz)
         other_player_listener = self.make_listener(jazz)
@@ -256,7 +292,7 @@ class PredictorTests(TestCase):
 
     def test_multiple_votes_from_one_listener_produce_one_layer(self):
         sound = self.make_sound("ambient", "ambient")
-        self.player.sounds.add(sound)
+        self.player.post.collection.add(sound)
         listener = self.make_listener(sound)
         self.vote(listener)
         self.vote(listener, value=Vote.DOWNVOTE)
@@ -271,7 +307,7 @@ class PredictorTests(TestCase):
     def test_each_listener_contributes_a_layer_from_their_own_top_tag(self):
         library_rock = self.make_sound("library-rock", "rock")
         library_jazz = self.make_sound("library-jazz", "jazz")
-        self.player.sounds.add(library_rock, library_jazz)
+        self.player.post.collection.add(library_rock, library_jazz)
         rock_one = self.make_sound("rock-one", "rock")
         rock_two = self.make_sound("rock-two", "rock")
         jazz_one = self.make_sound("jazz-one", "jazz")
@@ -296,7 +332,7 @@ class PredictorTests(TestCase):
     def test_tied_usable_top_tags_are_selected_randomly(self):
         rock = self.make_sound("library-rock", "rock")
         jazz = self.make_sound("library-jazz", "jazz")
-        self.player.sounds.add(rock, jazz)
+        self.player.post.collection.add(rock, jazz)
         collected = self.make_sound("collected", "rock", "jazz")
         listener = self.make_listener(collected)
         self.vote(listener)
@@ -316,7 +352,7 @@ class PredictorTests(TestCase):
 
     def test_uses_a_matching_tag_when_another_tied_top_tag_is_unavailable(self):
         jazz = self.make_sound("library-jazz", "jazz")
-        self.player.sounds.add(jazz)
+        self.player.post.collection.add(jazz)
         collected = self.make_sound("collected", "jazz", "unavailable")
         listener = self.make_listener(collected)
         self.vote(listener)
@@ -328,7 +364,7 @@ class PredictorTests(TestCase):
 
     def test_does_not_fall_back_to_a_less_frequent_tag(self):
         jazz = self.make_sound("library-jazz", "jazz")
-        self.player.sounds.add(jazz)
+        self.player.post.collection.add(jazz)
         unavailable_one = self.make_sound("unavailable-one", "unavailable")
         unavailable_two = self.make_sound("unavailable-two", "unavailable")
         collected_jazz = self.make_sound("collected-jazz", "jazz")
@@ -347,7 +383,7 @@ class PredictorTests(TestCase):
     def test_selected_sound_is_restricted_to_the_players_library(self):
         library_sound = self.make_sound("library", "ambient")
         outside_sound = self.make_sound("outside", "ambient")
-        self.player.sounds.add(library_sound)
+        self.player.post.collection.add(library_sound)
         listener = self.make_listener(outside_sound)
         self.vote(listener)
 
@@ -356,10 +392,33 @@ class PredictorTests(TestCase):
         self.player.refresh_from_db()
         self.assertEqual(self.player.playing.layers[0].sound_id, library_sound.pk)
 
+    def test_switching_posts_predicts_from_the_new_posts_collection(self):
+        previous_sound = self.make_sound("previous-library", "ambient")
+        next_sound = self.make_sound("next-library", "ambient")
+        self.player.post.collection.add(previous_sound)
+        listener = self.make_listener(previous_sound)
+        self.vote(listener)
+        self.assertEqual(self.predict(), 1)
+        self.player.refresh_from_db()
+        self.assertEqual(self.player.playing.layers[0].sound_id, previous_sound.pk)
+
+        previous_post = self.player.post
+        next_post = LocalPost.objects.create(post=Post.objects.create(
+            composer=self.manager.user, title="The next local post"
+        ))
+        next_post.collection.add(next_sound)
+        self.player.post = next_post
+        self.player.save(update_fields=["post"])
+        self.assertEqual(self.predict(), 1)
+        self.player.refresh_from_db()
+        self.assertEqual(self.player.playing.layers[0].sound_id, next_sound.pk)
+        self.assertEqual(self.player.library(), [next_sound])
+        self.assertEqual(list(previous_post.collection.all()), [previous_sound])
+
     def test_same_top_tag_uses_distinct_matching_sounds(self):
         library_one = self.make_sound("library-one", "ambient")
         library_two = self.make_sound("library-two", "ambient")
-        self.player.sounds.add(library_one, library_two)
+        self.player.post.collection.add(library_one, library_two)
         listener_one = self.make_listener(
             self.make_sound("collected-one", "ambient")
         )
@@ -378,7 +437,7 @@ class PredictorTests(TestCase):
 
     def test_same_top_tag_with_one_matching_sound_adds_it_only_once(self):
         library_sound = self.make_sound("library", "ambient")
-        self.player.sounds.add(library_sound)
+        self.player.post.collection.add(library_sound)
         listener_one = self.make_listener(
             self.make_sound("collected-one", "ambient")
         )
@@ -431,6 +490,8 @@ class PredictorTests(TestCase):
         self.player.refresh_from_db()
         self.assertIsInstance(self.player.playing, Prediction)
         self.assertEqual(self.player.playing.layers, [])
+        self.assertTrue(self.player.sleeping)
+        self.assertIsNone(self.player.activated_at)
         choice.assert_not_called()
 
         response = self.client.get(
@@ -439,3 +500,106 @@ class PredictorTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["layers"], [])
+
+    def test_sleeping_player_returns_before_reading_votes(self):
+        Player.objects.filter(pk=self.player.pk).update(sleeping=True)
+
+        with patch("core.predict.Vote.recent") as recent:
+            self.assertEqual(self.predict(), 0)
+
+        recent.assert_not_called()
+
+    def test_activation_prediction_lives_for_the_activity_window_then_sleeps(self):
+        sound = self.make_sound("wake-up", "ambient")
+        self.player.post.collection.add(sound)
+
+        with patch("core.predict.random.choice", return_value=sound.pk):
+            prediction = activate_player(self.player)
+
+        self.assertIsNotNone(prediction)
+        self.player.refresh_from_db()
+        activated_at = self.player.activated_at
+        self.assertIsNotNone(activated_at)
+        self.assertFalse(self.player.sleeping)
+        self.assertEqual(
+            [layer.sound_id for layer in self.player.playing.layers],
+            [sound.pk],
+        )
+
+        with patch(
+            "core.predict.timezone.now",
+            return_value=activated_at + ACTIVITY_WINDOW - timedelta(seconds=1),
+        ):
+            self.assertEqual(self.predict(), 0)
+
+        self.player.refresh_from_db()
+        self.assertFalse(self.player.sleeping)
+        self.assertEqual(
+            [layer.sound_id for layer in self.player.playing.layers],
+            [sound.pk],
+        )
+
+        with patch(
+            "core.predict.timezone.now",
+            return_value=activated_at + ACTIVITY_WINDOW + timedelta(seconds=1),
+        ):
+            self.assertEqual(self.predict(), 0)
+
+        self.player.refresh_from_db()
+        self.assertTrue(self.player.sleeping)
+        self.assertIsNone(self.player.activated_at)
+        self.assertEqual(self.player.playing.layers, [])
+
+
+class SoundCreditTests(TestCase):
+    """The artist named on a layer, and where pressing that name goes.
+
+    An artist with a page of their own is reached at it directly, which is what
+    keeps their profile theirs to run rather than ours to host. Everyone else
+    falls back to the details modal, and the card decides between the two by
+    reading this field — so what matters here is that every layer carries one,
+    and that it is empty exactly when there is no page to send anybody to.
+    """
+
+    def make_sound(self, title="Rain on Tin", **fields):
+        """A Sound with its embedding supplied, so save() skips the classifier."""
+        return Sound.objects.create(
+            file=f"sounds/{title.lower().replace(' ', '-')}.wav",
+            title=title,
+            embeddings=[0, 0, 0, 0, 0],
+            **fields,
+        )
+
+    def test_a_layer_carries_the_artists_own_page_beside_their_name(self):
+        artist = Artist.objects.create(
+            name="Cameron", url="https://cameron.example/"
+        )
+        layer = self.make_sound(artist=artist).asLayer()
+
+        self.assertEqual(layer["sound_artist"], "Cameron")
+        self.assertEqual(layer["artist_url"], "https://cameron.example/")
+
+    def test_an_artist_who_has_given_no_page_offers_none(self):
+        """Which is what leaves the press to open our own details modal."""
+        artist = Artist.objects.create(name="Sam")
+
+        self.assertEqual(self.make_sound(artist=artist).artist_url, "")
+
+    def test_a_legacy_credit_has_no_page_to_offer(self):
+        """A name in a text column has no Artist row to keep a URL on."""
+        sound = self.make_sound(artist_legacy="Field Recordist")
+
+        self.assertEqual(sound.artist_name, "Field Recordist")
+        self.assertEqual(sound.artist_url, "")
+
+    def test_a_stored_mix_hands_the_credit_through_to_the_card(self):
+        """as_layers is what the explore post and the library card mount."""
+        artist = Artist.objects.create(
+            name="Cameron", url="https://cameron.example/"
+        )
+        sound = self.make_sound(artist=artist)
+        cosound = Cosound.get_or_create_from_layers([(sound.pk, 0.5)])
+
+        [layer] = cosound.as_layers()
+
+        self.assertEqual(layer["artist_url"], "https://cameron.example/")

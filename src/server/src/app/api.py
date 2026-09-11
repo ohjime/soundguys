@@ -12,7 +12,7 @@ class PlayerTokenAuth(APIKeyHeader):
 
     def authenticate(self, request, key):
         try:
-            return Player.objects.get(token=key)
+            return Player.objects.select_related("post").get(token=key)
         except Player.DoesNotExist:
             return None
 
@@ -27,7 +27,7 @@ def get_manifest(request) -> dict[str, str]:
     player: Player = request.auth
     return {
         str(sound.pk): request.build_absolute_uri(sound.file.url)
-        for sound in player.sounds.all()
+        for sound in player.post.collection.all()
         if sound.file
     }
 

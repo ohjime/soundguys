@@ -11,9 +11,9 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import escape
 
-from core.models import Cosound, Listener, Sound
-from explore.fonts import article_font_choices, article_font_css_stack
-from explore.models import Comment, Post
+from core.fonts import article_font_choices, article_font_css_stack
+from core.models import Comment, Cosound, Listener, Post, Sound
+from explore.models import PublicPost
 from explore.renderer import render_markdown
 
 
@@ -46,7 +46,8 @@ def make_post(**fields):
     # intentionally ignored so each post exercises the real model default.
     fields.pop("slug", None)
     fields.setdefault("composer", make_composer())
-    return Post.objects.create(**fields)
+    cosound = fields.pop("cosound", None)
+    return PublicPost.objects.create(post=Post.objects.create(**fields), cosound=cosound)
 
 
 class RenderMarkdownTests(SimpleTestCase):
@@ -94,6 +95,138 @@ class RenderMarkdownTests(SimpleTestCase):
 
         self.assertIn("<h2>Heading</h2>", html)
         self.assertIn("<li>one</li>", html)
+
+    def test_a_link_to_another_site_opens_in_a_new_tab(self):
+        """A reader following one keeps the post — and its mix — behind them."""
+        html = render_markdown("Cameron's [own page](https://example.com/cam).")
+
+        self.assertIn('target="_blank"', html)
+        self.assertIn('href="https://example.com/cam"', html)
+        self.assertIn('rel="noopener noreferrer"', html)
+
+    def test_an_insecure_external_link_is_sent_to_a_new_tab_too(self):
+        html = render_markdown("[an old site](http://example.org/archive)")
+
+        self.assertIn('target="_blank"', html)
+
+    def test_links_that_stay_on_the_site_keep_this_tab(self):
+        """Nothing is lost following these, and a new tab would be noise."""
+        for body in ("[the library](/library/)", "[write to us](mailto:a@b.co)"):
+            with self.subTest(body=body):
+                self.assertNotIn("target=", render_markdown(body))
+
+    def test_a_writers_own_target_does_not_survive_the_sanitizer(self):
+        """Whatever they asked for, a rendered link carries exactly one target."""
+        html = render_markdown(
+            '<a href="https://example.com" target="_self">a site</a>'
+        )
+
+        self.assertEqual(html.count("target="), 1)
+        self.assertIn('target="_blank"', html)
+
+    def test_a_link_title_cannot_pose_as_an_href(self):
+        """The lookahead reads attributes, not text that resembles one."""
+        html = render_markdown('[a site](/library/ \'href="https://evil.test\')')
+
+        self.assertNotIn("target=", html)
+
+
+class LayerLinkTests(SimpleTestCase):
+    """`#layer-…` links, resolved against the mix the post is written about."""
+
+    LAYERS = [
+        {"sound_id": 11, "sound_title": "Rain on Tin"},
+        {"sound_id": 22, "sound_title": "Harbour Bell"},
+    ]
+    ANCHOR = "explore-cosound-7"
+
+    def render(self, body, layers=None, anchor=None):
+        return render_markdown(
+            body,
+            self.LAYERS if layers is None else layers,
+            self.ANCHOR if anchor is None else anchor,
+        )
+
+    def test_a_layer_number_becomes_a_control_over_that_layer(self):
+        html = self.render("Listen for [the bell](#layer-2).")
+
+        self.assertIn('data-cosound-layer="1"', html)
+        self.assertIn(f'href="#{self.ANCHOR}"', html)
+        self.assertIn('class="explore-layer-link"', html)
+        self.assertIn("the bell", html)
+
+    def test_a_slugified_sound_title_names_the_same_layer(self):
+        html = self.render("Listen for [the bell](#layer-harbour-bell).")
+
+        self.assertIn('data-cosound-layer="1"', html)
+
+    def test_a_title_key_is_matched_loosely(self):
+        html = self.render("[rain](#layer-Rain_on_Tin)")
+
+        self.assertIn('data-cosound-layer="0"', html)
+
+    def test_the_layer_title_is_offered_as_the_links_tooltip(self):
+        html = self.render("[the bell](#layer-2)")
+
+        self.assertIn("Hear Harbour Bell on its own", html)
+
+    def test_emphasis_inside_the_link_text_survives(self):
+        html = self.render("[the *bell*](#layer-2)")
+
+        self.assertIn("the <em>bell</em>", html)
+
+    def test_a_link_is_not_left_sitting_in_its_own_whitespace(self):
+        html = self.render("Listen for [the bell](#layer-2).")
+
+        self.assertIn("</a>.", html)
+
+    def test_a_number_past_the_end_of_the_mix_keeps_only_its_words(self):
+        html = self.render("Listen for [the bell](#layer-9).")
+
+        self.assertNotIn("data-cosound-layer", html)
+        self.assertNotIn("<a", html)
+        self.assertIn("Listen for the bell.", html)
+
+    def test_layer_zero_is_not_a_layer(self):
+        html = self.render("[nothing](#layer-0)")
+
+        self.assertNotIn("data-cosound-layer", html)
+
+    def test_a_title_no_layer_carries_keeps_only_its_words(self):
+        html = self.render("Listen for [the gulls](#layer-seagulls).")
+
+        self.assertNotIn("<a", html)
+        self.assertIn("Listen for the gulls.", html)
+
+    def test_links_degrade_when_there_is_no_mix_to_point_at(self):
+        html = self.render("[the bell](#layer-2)", layers=[])
+
+        self.assertNotIn("<a", html)
+        self.assertIn("the bell", html)
+
+    def test_links_degrade_when_there_is_no_card_to_scroll_to(self):
+        html = self.render("[the bell](#layer-2)", anchor="")
+
+        self.assertNotIn("<a", html)
+        self.assertIn("the bell", html)
+
+    def test_an_ordinary_link_is_left_alone(self):
+        html = self.render("[a site](https://example.com/#layer-2)")
+
+        self.assertNotIn("data-cosound-layer", html)
+        self.assertIn('href="https://example.com/#layer-2"', html)
+
+    def test_a_layer_link_is_not_sent_to_another_tab(self):
+        """It drives the card on this page — a new tab has no card to drive."""
+        html = self.render("Listen for [the bell](#layer-2).")
+
+        self.assertNotIn("target=", html)
+
+    def test_a_layer_link_cannot_smuggle_markup_through_its_key(self):
+        html = self.render('[x](#layer-2"onmouseover="alert(1))')
+
+        self.assertNotIn("onmouseover", html)
+        self.assertNotIn("alert(1)", html)
 
 
 class ExploreViewTests(TestCase):
@@ -207,10 +340,10 @@ class ExploreCommentTests(TestCase):
         return reverse("explore:discussion", kwargs={"slug": self.post.slug})
 
     def test_database_allows_only_one_comment_per_user_and_post(self):
-        Comment.objects.create(post=self.post, user=self.user, body="First")
+        Comment.objects.create(post=self.post.post, user=self.user, body="First")
 
         with self.assertRaises(IntegrityError), transaction.atomic():
-            Comment.objects.create(post=self.post, user=self.user, body="Second")
+            Comment.objects.create(post=self.post.post, user=self.user, body="Second")
 
     def test_comment_is_saved_against_the_signed_in_user_and_post(self):
         self.client.force_login(self.user)
@@ -223,7 +356,9 @@ class ExploreCommentTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         comment = Comment.objects.get()
-        self.assertEqual(comment.post, self.post)
+        self.assertEqual(comment.post, self.post.post)
+        self.assertIs(type(comment.post), Post)
+        self.assertEqual(comment.post.public_posts.get(), self.post)
         self.assertEqual(comment.user, self.user)
         self.assertEqual(comment.body, "A thoughtful response.")
         self.assertContains(response, "You’ve already commented on this post")
@@ -241,7 +376,7 @@ class ExploreCommentTests(TestCase):
         self.assertFalse(Comment.objects.exists())
 
     def test_second_submission_does_not_change_the_first_comment(self):
-        Comment.objects.create(post=self.post, user=self.user, body="Keep this")
+        Comment.objects.create(post=self.post.post, user=self.user, body="Keep this")
         self.client.force_login(self.user)
 
         response = self.client.post(
@@ -283,7 +418,7 @@ class ExploreCommentTests(TestCase):
 
     def test_nested_article_renders_the_textarea_and_existing_comments(self):
         Comment.objects.create(
-            post=self.post,
+            post=self.post.post,
             user=self.user,
             body="Visible from another browser",
         )
@@ -303,7 +438,7 @@ class ExploreCommentTests(TestCase):
 
     def test_comment_body_is_escaped(self):
         Comment.objects.create(
-            post=self.post,
+            post=self.post.post,
             user=self.user,
             body='<script>alert("no")</script>',
         )
@@ -320,7 +455,7 @@ class ExploreCommentTests(TestCase):
                 email=f"listener-{index}@example.com",
             )
             Comment.objects.create(
-                post=self.post,
+                post=self.post.post,
                 user=user,
                 body=f"Comment number {index}",
             )
@@ -422,7 +557,7 @@ class ExplorePreviousPostsTests(TestCase):
                 email=f"previous-commenter-{index}@example.com",
             )
             Comment.objects.create(
-                post=cls.previous[0],
+                post=cls.previous[0].post,
                 user=commenter,
                 body=f"Previous comment {index}",
             )
@@ -449,7 +584,7 @@ class ExplorePreviousPostsTests(TestCase):
         self.assertNotContains(response, "Previous 7")
 
     def test_lock_preview_is_absent_when_five_or_fewer_previous_posts_exist(self):
-        Post.objects.filter(pk__in=[post.pk for post in self.previous[5:]]).update(
+        Post.objects.filter(pk__in=[post.post_id for post in self.previous[5:]]).update(
             publication_date=None
         )
 
@@ -469,35 +604,77 @@ class ExploreAdminTests(TestCase):
         cls.admin_user = get_user_model().objects.create_superuser(
             username="admin", email="admin@example.com", password="pw"
         )
-        cls.post = make_post(
+        cls.public_post = make_post(
             title="Admin Post",
             slug="admin-post",
             cosound=make_cosound("Admin layer"),
         )
 
+        cls.post = cls.public_post.post
+
+    def test_add_page_creates_and_publishes_the_shared_and_public_rows(self):
+        self.client.force_login(self.admin_user)
+
+        response = self.client.post(
+            reverse("admin:core_post_add"),
+            {
+                "announcers_call": "Presenting",
+                "title": "A newly published article",
+                "greeting_style": "Dear Listener",
+                "font_family": "dancing-script",
+                "article": "New **writing**.",
+                "authors_present": "1",
+                "composer": str(self.admin_user.pk),
+                "_publish": "1",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        shared_post = Post.objects.get(title="A newly published article")
+        response = self.client.post(reverse("admin:explore_publicpost_add"), {"post": shared_post.pk, "cosound": self.public_post.cosound_id})
+        self.assertEqual(response.status_code, 302)
+        public_post = PublicPost.objects.get(post=shared_post)
+        self.assertEqual(public_post.post.article, "New **writing**.")
+        self.assertEqual(public_post.post.composer, self.admin_user)
+        self.assertEqual(public_post.cosound, self.public_post.cosound)
+        self.assertIsNotNone(public_post.post.publication_date)
+
+    def test_comments_are_moderated_in_core_with_the_shared_post_title(self):
+        comment = Comment.objects.create(
+            post=self.post, user=self.admin_user, body="A moderated response"
+        )
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(
+            reverse("admin:core_comment_change", args=[comment.pk])
+        )
+
+        self.assertContains(response, "A moderated response")
+        self.assertContains(response, self.post.title)
+        self.assertNotContains(response, 'textarea name="body"')
+
     def test_change_page_mounts_easymde(self):
         self.client.force_login(self.admin_user)
 
         response = self.client.get(
-            reverse("admin:explore_post_change", args=[self.post.pk])
+            reverse("admin:core_post_change", args=[self.post.pk])
         )
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "data-easymde")
-        self.assertContains(response, "explore/vendor/easymde.min.js")
+        self.assertContains(response, "core/vendor/easymde.min.js")
 
     def test_content_fields_follow_the_requested_admin_order(self):
         self.client.force_login(self.admin_user)
 
         response = self.client.get(
-            reverse("admin:explore_post_change", args=[self.post.pk])
+            reverse("admin:core_post_change", args=[self.post.pk])
         )
         content = response.content.decode()
 
         field_ids = [
             "id_announcers_call",
             "id_title",
-            "id_cosound",
             "id_greeting_style",
             "id_font_family",
             "id_article",
@@ -506,7 +683,6 @@ class ExploreAdminTests(TestCase):
         ]
         positions = [content.index(field_id) for field_id in field_ids]
         self.assertEqual(positions, sorted(positions))
-        self.assertContains(response, "Featured cosound")
         self.assertContains(response, "Dancing Script")
         self.assertContains(response, "Newsreader")
         self.assertContains(response, "Tailwind Sans")
@@ -523,7 +699,7 @@ class ExploreAdminTests(TestCase):
         self.client.force_login(self.admin_user)
 
         response = self.client.get(
-            reverse("admin:explore_post_change", args=[self.post.pk])
+            reverse("admin:core_post_change", args=[self.post.pk])
         )
 
         self.assertContains(response, 'data-authors-widget="true"')
@@ -539,11 +715,10 @@ class ExploreAdminTests(TestCase):
         self.client.force_login(self.admin_user)
 
         response = self.client.post(
-            reverse("admin:explore_post_change", args=[self.post.pk]),
+            reverse("admin:core_post_change", args=[self.post.pk]),
             {
                 "announcers_call": "Presenting",
                 "title": self.post.title,
-                "cosound": str(self.post.cosound_id),
                 "greeting_style": "Dear Listener",
                 "font_family": "dancing-script",
                 "article": "",
@@ -575,11 +750,10 @@ class ExploreAdminTests(TestCase):
         self.client.force_login(self.admin_user)
 
         response = self.client.post(
-            reverse("admin:explore_post_change", args=[self.post.pk]),
+            reverse("admin:core_post_change", args=[self.post.pk]),
             {
                 "announcers_call": "Presenting",
                 "title": self.post.title,
-                "cosound": str(self.post.cosound_id),
                 "greeting_style": "Dear Listener",
                 "font_family": "dancing-script",
                 "article": "",
@@ -596,7 +770,7 @@ class ExploreAdminTests(TestCase):
         self.client.force_login(self.admin_user)
 
         response = self.client.get(
-            reverse("admin:explore_post_change", args=[self.post.pk])
+            reverse("admin:core_post_change", args=[self.post.pk])
         )
 
         self.assertContains(response, "Publish?")
@@ -612,7 +786,7 @@ class ExploreAdminTests(TestCase):
         self.client.force_login(self.admin_user)
 
         response = self.client.get(
-            reverse("admin:explore_post_change", args=[self.post.pk])
+            reverse("admin:core_post_change", args=[self.post.pk])
         )
 
         self.assertContains(response, "removed-font (missing — using Tailwind Sans)")
@@ -621,11 +795,10 @@ class ExploreAdminTests(TestCase):
         self.client.force_login(self.admin_user)
 
         response = self.client.post(
-            reverse("admin:explore_post_change", args=[self.post.pk]),
+            reverse("admin:core_post_change", args=[self.post.pk]),
             {
                 "announcers_call": "Presenting",
                 "title": self.post.title,
-                "cosound": str(self.post.cosound_id),
                 "greeting_style": "Dear Listener",
                 "font_family": "dancing-script",
                 "article": "",
@@ -641,6 +814,105 @@ class ExploreAdminTests(TestCase):
         self.assertIsNotNone(self.post.publication_date)
         self.assertContains(response, "Published on")
         self.assertNotContains(response, ">Publish?</button>", html=False)
+
+
+class PublicPostStructureTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.public_post = make_post(
+            title="Public writing",
+            article="The original article.",
+            cosound=make_cosound("Public structure layer"),
+            publication_date=timezone.now(),
+        )
+        cls.base_post = Post.objects.create(
+            title="Independent writing",
+            article="This article has no public mix.",
+            composer=make_composer("independent-composer"),
+            publication_date=timezone.now(),
+        )
+        cls.user = get_user_model().objects.create_user(
+            username="structure-listener",
+            email="structure-listener@example.com",
+        )
+
+    def test_public_post_exposes_its_shared_post_and_owns_only_the_mix(self):
+        base_post = self.public_post.post
+
+        self.assertIs(type(base_post), Post)
+        self.assertEqual(base_post.pk, self.public_post.post_id)
+        self.assertEqual(base_post.public_posts.get(), self.public_post)
+        self.assertEqual(base_post.article, self.public_post.post.article)
+        self.assertEqual(
+            {field.name for field in PublicPost._meta.local_fields},
+            {"id", "post", "cosound", "slug"},
+        )
+        self.assertEqual(
+            list(self.public_post.cosound.public_posts.all()), [self.public_post]
+        )
+
+    def test_public_article_reads_updates_to_the_shared_post(self):
+        Post.objects.filter(pk=self.public_post.post_id).update(
+            title="Revised shared writing", article="The **shared** article."
+        )
+
+        response = self.client.get(
+            self.public_post.get_absolute_url(), HTTP_HX_REQUEST="true"
+        )
+
+        self.assertContains(response, "Revised shared writing")
+        self.assertContains(response, "The <strong>shared</strong> article.")
+        self.assertNotContains(response, "The original article.")
+
+    def test_base_only_post_is_excluded_from_public_views(self):
+        self.base_post.refresh_from_db()
+        self.assertIsNotNone(self.base_post.publication_date)
+        response = self.client.get(reverse("explore:index"), HTTP_HX_REQUEST="true")
+        self.assertContains(response, self.public_post.post.title)
+        self.assertNotContains(response, self.base_post.title)
+
+        self.client.force_login(self.user)
+        for name in ("detail", "discussion", "create_comment"):
+            with self.subTest(endpoint=name):
+                url = reverse(f"explore:{name}", kwargs={"slug": self.base_post.slug})
+                response = (
+                    self.client.post(url, {"body": "No public post"})
+                    if name == "create_comment"
+                    else self.client.get(url)
+                )
+                self.assertEqual(response.status_code, 404)
+        self.assertFalse(Comment.objects.exists())
+
+    def test_base_only_comments_do_not_block_a_public_response(self):
+        Comment.objects.create(
+            post=self.base_post, user=self.user, body="An independent response"
+        )
+        self.client.force_login(self.user)
+
+        response = self.client.post(
+            reverse("explore:create_comment", kwargs={"slug": self.public_post.slug}),
+            {"body": "A public response"},
+            HTTP_HX_REQUEST="true",
+        )
+
+        self.assertContains(response, "A public response")
+        self.assertNotContains(response, "An independent response")
+        self.assertEqual(Comment.objects.count(), 2)
+        self.assertEqual(self.user.comments.count(), 2)
+        self.assertEqual(self.public_post.post.comments.get().body, "A public response")
+
+    def test_deleting_a_public_post_preserves_its_shared_post_and_comments(self):
+        public_id = self.public_post.pk
+        Comment.objects.create(
+            post=self.public_post.post, user=self.user, body="A public response"
+        )
+
+        self.public_post.delete()
+
+        self.assertFalse(PublicPost.objects.filter(pk=public_id).exists())
+        self.assertTrue(Post.objects.filter(pk=self.public_post.post_id).exists())
+        self.assertTrue(Comment.objects.exists())
+        self.assertTrue(Post.objects.filter(pk=self.base_post.pk).exists())
 
 
 class ExplorePostMetadataTests(TestCase):
@@ -726,13 +998,13 @@ class ExplorePostMetadataTests(TestCase):
             composer=composer,
         )
 
-        self.assertEqual(post.composer, composer)
-        self.assertEqual(list(composer.composed_explore_posts.all()), [post])
+        self.assertEqual(post.post.composer, composer)
+        self.assertEqual(list(composer.composed_posts.all()), [post.post])
 
         with self.assertRaises(ProtectedError):
             composer.delete()
         post.refresh_from_db()
-        self.assertEqual(post.composer, composer)
+        self.assertEqual(post.post.composer, composer)
 
     def test_article_renders_call_greeting_and_authors(self):
         post = make_post(
@@ -767,6 +1039,45 @@ class ExplorePostMetadataTests(TestCase):
         self.assertContains(response, escape('"Newsreader", serif'))
         self.assertContains(response, 'class="explore-font text-xl"')
 
+    def test_an_author_credit_leaves_for_its_own_page_in_a_new_tab(self):
+        """The credit goes straight to the author's site, and the post stays put.
+
+        Which is the whole point of the URL being on the credit: an author's
+        page is their own, hosted wherever they keep it, and reaching it is
+        never a reason to lose the mix the post is being read over.
+        """
+        post = make_post(
+            title="Listening with the Land",
+            article="The writing.",
+            authors=[
+                {
+                    "name": "Cameron Example",
+                    "role": "Writer",
+                    "url": "https://example.com/cameron",
+                },
+                {"name": "Sam Example", "role": "Editor"},
+            ],
+            cosound=make_cosound("Land layer"),
+            publication_date=timezone.now(),
+        )
+
+        response = self.client.get(
+            reverse("explore:detail", kwargs={"slug": post.slug}),
+            HTTP_HX_REQUEST="true",
+        )
+        html = response.content.decode()
+
+        credit = html[html.index("Cameron Example") - 300 : html.index("Cameron Example")]
+        self.assertIn('href="https://example.com/cameron"', credit)
+        self.assertIn('target="_blank"', credit)
+        self.assertIn('rel="noopener"', credit)
+        # A credit without a URL is still a credit — just not a link. Scoped to
+        # its own paragraph rather than counted over the page: the card above
+        # carries an outbound artist link of its own now.
+        self.assertContains(response, "Sam Example")
+        sam = html.index("Sam Example")
+        self.assertNotIn("href", html[html.rindex("<p", 0, sam) : sam])
+
 
 class HomeIntegrationTests(TestCase):
     @classmethod
@@ -797,22 +1108,19 @@ class HomeIntegrationTests(TestCase):
 class ExploreCosoundRuleTests(TestCase):
     """An Explore post is publishable only while it has a mix behind it."""
 
-    def test_clean_refuses_to_publish_without_a_cosound(self):
-        post = Post(
+    def test_shared_writing_can_publish_but_explore_requires_a_cosound(self):
+        post = make_post(
             title="No Mix",
             composer=make_composer("no-mix-composer"),
             publication_date=timezone.now(),
         )
 
-        with self.assertRaises(ValidationError) as raised:
-            post.clean()
-
-        self.assertEqual(
-            set(raised.exception.message_dict), {"publication_date", "cosound"}
-        )
+        post.full_clean()
+        self.assertIsNotNone(post.post.publication_date)
+        self.assertEqual(self.client.get(post.get_absolute_url()).status_code, 404)
 
     def test_clean_passes_once_a_cosound_is_attached(self):
-        post = Post(
+        post = make_post(
             title="Has Mix",
             composer=make_composer("has-mix-composer"),
             cosound=make_cosound("Clean layer"),
@@ -821,29 +1129,31 @@ class ExploreCosoundRuleTests(TestCase):
 
         post.clean()
 
-    def test_saving_without_a_cosound_unpublishes(self):
+    def test_saving_without_a_cosound_hides_public_page_without_publicationing_writing(self):
         post = make_post(
             title="Bypassed", publication_date=timezone.now()
         )
 
-        self.assertIsNone(post.publication_date)
-        self.assertIsNone(Post.objects.get(pk=post.pk).publication_date)
+        self.assertIsNotNone(post.post.publication_date)
+        self.assertIsNotNone(Post.objects.get(pk=post.post_id).publication_date)
+        self.assertEqual(self.client.get(post.get_absolute_url()).status_code, 404)
 
-    def test_clearing_the_cosound_unpublishes_on_save(self):
+    def test_clearing_the_cosound_hides_public_page_without_publicationing_writing_on_save(self):
         post = make_post(
             title="Losing Mix",
             slug="losing-mix",
             cosound=make_cosound("Doomed layer"),
             publication_date=timezone.now(),
         )
-        self.assertIsNotNone(post.publication_date)
+        self.assertIsNotNone(post.post.publication_date)
 
         post.cosound = None
         post.save()
 
-        self.assertIsNone(Post.objects.get(pk=post.pk).publication_date)
+        self.assertIsNotNone(Post.objects.get(pk=post.post_id).publication_date)
+        self.assertEqual(self.client.get(post.get_absolute_url()).status_code, 404)
 
-    def test_update_fields_save_still_persists_the_unpublish(self):
+    def test_update_fields_save_still_persists_the_publication(self):
         post = make_post(
             title="Narrow Save",
             slug="narrow-save",
@@ -854,9 +1164,10 @@ class ExploreCosoundRuleTests(TestCase):
         post.cosound = None
         post.save(update_fields=["cosound"])
 
-        self.assertIsNone(Post.objects.get(pk=post.pk).publication_date)
+        self.assertIsNotNone(Post.objects.get(pk=post.post_id).publication_date)
+        self.assertEqual(self.client.get(post.get_absolute_url()).status_code, 404)
 
-    def test_deleting_the_cosound_unpublishes_the_post(self):
+    def test_deleting_the_cosound_hides_public_page_without_publicationing_writing_the_post(self):
         cosound = make_cosound("Deleted layer")
         post = make_post(
             title="Orphaned",
@@ -868,7 +1179,7 @@ class ExploreCosoundRuleTests(TestCase):
 
         post.refresh_from_db()
         self.assertIsNone(post.cosound)
-        self.assertIsNone(post.publication_date)
+        self.assertIsNotNone(post.post.publication_date)
 
     def test_published_posts_exclude_a_post_with_no_cosound(self):
         from explore.renderer import get_published_posts
@@ -878,7 +1189,7 @@ class ExploreCosoundRuleTests(TestCase):
             cosound=make_cosound("Kept layer"),
             publication_date=timezone.now(),
         )
-        Post.objects.filter(pk=kept.pk).update(cosound=None)
+        PublicPost.objects.filter(pk=kept.pk).update(cosound=None)
 
         self.assertEqual(list(get_published_posts()), [])
 
@@ -965,15 +1276,24 @@ class ExploreCardRenderTests(TestCase):
         self.assert_card_is_mounted(response)
 
     def test_save_button_carries_the_post_title(self):
+        """The post's own title is what the save dialog falls back to.
+
+        A mix loaded from the library brings its own name and wins; a post read
+        cold has none to bring, so keeping a copy opens on the post's title
+        rather than on an empty box.
+        """
         response = self.client.get(
             reverse("explore:detail", kwargs={"slug": self.post.slug}),
             HTTP_HX_REQUEST="true",
         )
 
-        self.assertContains(response, 'title: "Bells at Dawn"')
+        self.assertContains(
+            response,
+            'title: Alpine.store("soundLayers")?.loadedTitle || "Bells at Dawn"',
+        )
 
     def test_a_quote_in_the_title_cannot_break_out_of_the_save_payload(self):
-        Post.objects.filter(pk=self.post.pk).update(
+        Post.objects.filter(pk=self.post.post_id).update(
             title='He said "go" \' now'
         )
 
@@ -987,7 +1307,7 @@ class ExploreCardRenderTests(TestCase):
         self.assertNotIn('title: "He said "', content)
 
     def test_a_post_that_lost_its_cosound_is_not_readable(self):
-        Post.objects.filter(pk=self.post.pk).update(cosound=None)
+        PublicPost.objects.filter(pk=self.post.pk).update(cosound=None)
 
         response = self.client.get(
             reverse("explore:detail", kwargs={"slug": self.post.slug}),
@@ -995,6 +1315,33 @@ class ExploreCardRenderTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 404)
+
+    def test_a_layer_link_in_the_writing_points_at_the_card_on_the_page(self):
+        Post.objects.filter(pk=self.post.post_id).update(
+            article="Listen for [the bell](#layer-1)."
+        )
+
+        response = self.client.get(
+            reverse("explore:detail", kwargs={"slug": self.post.slug}),
+            HTTP_HX_REQUEST="true",
+        )
+        content = response.content.decode()
+
+        # The link's href and the deck's id have to be the same string, or the
+        # press scrolls nowhere.
+        self.assertIn(f'id="{self.post.card_anchor_id}"', content)
+        self.assertIn(f'href="#{self.post.card_anchor_id}"', content)
+        self.assertIn('data-cosound-layer="0"', content)
+
+    def test_the_index_wires_layer_links_too(self):
+        Post.objects.filter(pk=self.post.post_id).update(
+            article="Listen for [the bell](#layer-harbour-bell)."
+        )
+
+        response = self.client.get(reverse("explore:index"), HTTP_HX_REQUEST="true")
+
+        self.assertContains(response, 'data-cosound-layer="0"')
+        self.assertContains(response, f'id="{self.post.card_anchor_id}"')
 
 
 class SaveMixTitleTests(TestCase):

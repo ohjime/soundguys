@@ -15,14 +15,14 @@ class EasyMDEWidget(forms.Textarea):
         super().__init__({"data-easymde": "true", **(attrs or {})})
 
     class Media:
-        css = {"all": ["explore/vendor/easymde.min.css"]}
-        js = ["explore/vendor/easymde.min.js", "explore/js/easymde_init.js"]
+        css = {"all": ["core/vendor/easymde.min.css"]}
+        js = ["core/vendor/easymde.min.js", "core/js/easymde_init.js"]
 
 
 class AuthorsWidget(forms.Widget):
     """Edit the embedded author objects without exposing their JSON."""
 
-    template_name = "admin/explore/authors_widget.html"
+    template_name = "admin/core/authors_widget.html"
 
     def get_context(self, name, value, attrs):
         context = super().get_context(name, value, attrs)
@@ -74,5 +74,5 @@ class AuthorsWidget(forms.Widget):
         return [author for author in value if isinstance(author, dict)]
 
     class Media:
-        css = {"all": ["explore/css/authors_widget.css"]}
-        js = ["explore/js/authors_widget.js"]
+        css = {"all": ["core/css/authors_widget.css"]}
+        js = ["core/js/authors_widget.js"]

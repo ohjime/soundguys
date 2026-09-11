@@ -1,0 +1,16 @@
+{% comment %}
+One layer of the post's mix, named in the writing about it.
+
+Rendered by core/renderer.py over a `[the rain](#layer-2)` the writer put in
+their markdown, after the sanitizer has been over the document — which is the
+only reason this markup may carry a class and a data attribute at all.
+
+`href` is the card itself, so the link works as a plain fragment link if the
+script is slow or absent; explore-layer-links.js takes the click over and adds
+the two moves a fragment cannot make, riding the carousel to `data-cosound-layer`
+and isolating it.
+
+The class is styled in vite/assets/css/main.css rather than with utilities:
+Tailwind scans source files, and nothing about this HTML exists until a request
+renders it.
+{% endcomment %}<a class="explore-layer-link" href="#{{ card_anchor }}" data-cosound-layer="{{ index }}" title="Hear {{ layer_title }} on its own">{{ label }}</a>

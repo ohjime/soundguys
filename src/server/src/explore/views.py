@@ -3,9 +3,10 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_POST
 
+from core.models import Comment
 from explore.discussion import build_discussion_context
 from explore.forms import CommentForm
-from explore.models import Comment, Post
+from explore.models import PublicPost
 from explore.renderer import (
     get_explore_context,
     get_previous_posts_context,
@@ -15,9 +16,9 @@ from explore.renderer import (
 
 def get_published_post(slug):
     return get_object_or_404(
-        Post.objects.select_related("cosound"),
+        PublicPost.objects.select_related("post", "cosound"),
         slug=slug,
-        publication_date__isnull=False,
+        post__publication_date__isnull=False,
         cosound__isnull=False,
     )
 
@@ -39,10 +40,12 @@ def explore_detail(request, slug):
     post = get_published_post(slug)
     if not request.htmx:
         return render(request, "explore/detail.html", {"post": post})
+    # One layer list for both the card and the writing — see render_post.
+    sounds = post.cosound_sounds(request.user)
     context = {
         "post": post,
-        "body_html": render_post(post),
-        "sounds": post.cosound_sounds(request.user),
+        "body_html": render_post(post, sounds),
+        "sounds": sounds,
         **build_discussion_context(post, request.user),
         **get_previous_posts_context(post),
     }
@@ -66,6 +69,8 @@ def explore_discussion(request, slug):
 @require_POST
 def create_comment(request, slug):
     post = get_published_post(slug)
+    if request.GET.get("post", str(post.post.slug)) != str(post.post.slug):
+        return HttpResponse("This article has changed. Refresh before commenting.", status=409)
     if not request.user.is_authenticated:
         return HttpResponse("Sign in to comment.", status=403)
 
@@ -78,7 +83,7 @@ def create_comment(request, slug):
     try:
         with transaction.atomic():
             Comment.objects.create(
-                post=post,
+                post=post.post,
                 user=request.user,
                 body=form.cleaned_data["body"],
             )

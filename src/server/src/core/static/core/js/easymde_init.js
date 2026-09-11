@@ -1,4 +1,4 @@
-// Mounts EasyMDE on admin textareas rendered by explore.widgets.EasyMDEWidget.
+// Mounts EasyMDE on admin textareas rendered by core.post_widgets.EasyMDEWidget.
 // toolbar/autoDownloadFontAwesome are off so the admin makes zero external
 // requests; side-by-side preview is still available via Cmd/Ctrl-P.
 document.addEventListener("DOMContentLoaded", () => {

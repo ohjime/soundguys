@@ -1,18 +1,23 @@
-import datetime
 import hashlib
 import secrets
-from datetime import datetime, timezone
+import uuid
 from decimal import ROUND_UP, Decimal
 from typing import List
 
+from django.conf import settings
 from django.contrib.auth.models import AbstractUser
+from django.core.exceptions import ValidationError
+from django.core.validators import URLValidator
 from django.db import models as DjangoDB
-from django.db import transaction
+from django.db import router, transaction
+from django.urls import reverse
+from django.utils import timezone
 from django_pydantic_field import SchemaField
 from pgvector.django import VectorField
 from pydantic import BaseModel, Field
 from taggit.managers import TaggableManager
 
+from core.fonts import article_font_css_stack
 from core.utils import (
     _get_sound_classifier,
     _get_sound_dimension,
@@ -62,6 +67,19 @@ class Sound(DjangoDB.Model):
             return self.artist.name
         return self.artist_legacy or ""
 
+    @property
+    def artist_url(self) -> str:
+        """The artist's own page, when they have given us one.
+
+        Empty for a legacy credit, which is a name in a text column with no
+        Artist row — and so nowhere to keep a URL — behind it. That empty
+        string is what the carousel reads to decide whether pressing the name
+        leaves for the artist's own site or opens our details modal instead.
+        """
+        if self.artist_id:
+            return self.artist.url or ""
+        return ""
+
     def save(self, *args, **kwargs):
         if self.embeddings is None:
             classifier = _get_sound_classifier()
@@ -69,12 +87,18 @@ class Sound(DjangoDB.Model):
         super().save(*args, **kwargs)
 
     def asLayer(self, with_gain=1.0):
+        # Every surface that mounts a soundscape spreads this dict, so a field
+        # added here reaches the library, the explore card, the swap picker and
+        # the studio at once. `artist_url` rides along with the name it belongs
+        # to: the two are one credit, and a layer carrying one without the
+        # other is how a name comes to point at the wrong artist's site.
         return {
             "sound_id": self.pk,
             "sound_file": self.file.url,
             "sound_gain": with_gain,
             "sound_title": self.title,
             "sound_artist": self.artist_name,
+            "artist_url": self.artist_url,
         }
 
 
@@ -309,8 +333,15 @@ class Set(DjangoDB.Model):
 
 
 class Player(DjangoDB.Model):
-    sounds = DjangoDB.ManyToManyField(Sound, blank=True)
+    post = DjangoDB.OneToOneField(
+        "LocalPost",
+        on_delete=DjangoDB.PROTECT,
+        related_name="player",
+        blank=True,
+    )
     playing: Prediction = SchemaField(default=Prediction)
+    sleeping = DjangoDB.BooleanField(default=True)
+    activated_at = DjangoDB.DateTimeField(blank=True, null=True)
     manager = DjangoDB.ForeignKey(Manager, on_delete=DjangoDB.CASCADE)
     token = DjangoDB.CharField(max_length=64, unique=True, editable=False)
     name = DjangoDB.CharField(max_length=255)
@@ -324,17 +355,192 @@ class Player(DjangoDB.Model):
         return self.name
 
     def save(self, *args, **kwargs):
+        update_fields = kwargs.get("update_fields")
+        if update_fields is not None:
+            update_fields = set(update_fields)
+            if not update_fields:
+                return
+        sleeping = not bool(self.playing)
+        if self.sleeping != sleeping:
+            self.sleeping = sleeping
+            if update_fields is not None:
+                update_fields.add("sleeping")
+        if sleeping and self.activated_at is not None:
+            self.activated_at = None
+            if update_fields is not None:
+                update_fields.add("activated_at")
         if not self.token:
             self.token = secrets.token_hex(32)
-        super().save(*args, **kwargs)
+            if update_fields is not None:
+                update_fields.add("token")
+        using = kwargs.get("using") or router.db_for_write(type(self), instance=self)
+        kwargs["using"] = using
+        if update_fields is not None:
+            kwargs["update_fields"] = update_fields
+        post_field = self._meta.get_field("post")
+        supplied_post = post_field.get_cached_value(self, default=None)
+        if self.post_id is not None or supplied_post is not None:
+            # Keep Django's normal unsaved-related-object validation when a
+            # caller explicitly supplied an unsaved LocalPost.
+            return super().save(*args, **kwargs)
+
+        # New players retain the public name/bio they previously displayed.
+        # A separately authored LocalPost keeps the shared Post draft default.
+        # Both records must commit together, including when the player fails a
+        # uniqueness constraint or the caller is using another database.
+        created_post = None
+        try:
+            with transaction.atomic(using=using):
+                composer_id = Manager.objects.using(using).values_list(
+                    "user_id", flat=True
+                ).get(pk=self.manager_id)
+                shared_post = Post.objects.using(using).create(
+                    title=self.name,
+                    article=self.bio,
+                    composer_id=composer_id,
+                    publication_date=timezone.now(),
+                )
+                created_post = LocalPost.objects.using(using).create(post=shared_post)
+                self.post = created_post
+                if update_fields is not None:
+                    update_fields.add("post")
+                return super().save(*args, **kwargs)
+        except Exception:
+            if created_post is not None:
+                # Permit retrying this instance after its creation rolls back.
+                self.post = None
+            raise
 
     def library(self) -> List[Sound]:
-        return list(self.sounds.all())
+        return list(self.post.collection.all())
 
     def update(self, prediction: Prediction) -> None:
         self.playing = prediction
-        self.save()
+        self.save(update_fields=["playing"])
 
     def announce(self, prediction: Prediction) -> None:
         print(f"New Prediction for \033[1m{self.name}\033[22m:")
         print(prediction.summary())
+
+
+def validate_authors(authors):
+    """Validate embedded author credits without creating an Author model."""
+    if not isinstance(authors, list):
+        raise ValidationError("Authors must be a list.")
+
+    validate_url = URLValidator()
+    for index, author in enumerate(authors, start=1):
+        if not isinstance(author, dict):
+            raise ValidationError(f"Author {index} must be an object.")
+        unknown = set(author) - {"name", "role", "url"}
+        if unknown:
+            raise ValidationError(
+                f"Author {index} has unsupported fields: {', '.join(sorted(unknown))}."
+            )
+        for field in ("name", "role"):
+            value = author.get(field)
+            if not isinstance(value, str) or not value.strip():
+                raise ValidationError(f"Author {index} requires a {field}.")
+        url = author.get("url", "")
+        if url:
+            if not isinstance(url, str):
+                raise ValidationError(f"Author {index} URL must be text.")
+            try:
+                validate_url(url)
+            except ValidationError as error:
+                raise ValidationError(f"Author {index} has an invalid URL.") from error
+
+
+class Post(DjangoDB.Model):
+    """Shared writing and discussion, independent of a playback source."""
+
+    announcers_call = DjangoDB.CharField(max_length=100, default="Presenting")
+    title = DjangoDB.CharField(max_length=255)
+    greeting_style = DjangoDB.CharField(max_length=100, default="Dear Listener")
+    font_family = DjangoDB.CharField(
+        max_length=100,
+        default="dancing-script",
+        blank=True,
+        help_text="Typography available to selected elements in the post template.",
+    )
+    article = DjangoDB.TextField(blank=True)
+    authors = DjangoDB.JSONField(
+        default=list,
+        blank=True,
+        validators=[validate_authors],
+        help_text='A list of objects with "name", "role", and an optional "url".',
+    )
+    composer = DjangoDB.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=DjangoDB.PROTECT,
+        related_name="composed_posts",
+    )
+    slug = DjangoDB.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    publication_date = DjangoDB.DateTimeField(blank=True, null=True)
+    created_at = DjangoDB.DateTimeField(auto_now_add=True)
+    updated_at = DjangoDB.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-publication_date", "-created_at"]
+
+    def __str__(self):
+        return self.title
+
+    @property
+    def font_css_stack(self):
+        return article_font_css_stack(self.font_family)
+
+
+class LocalPost(DjangoDB.Model):
+    """A player's writing and selectable sounds, independent of its live mix."""
+
+    post = DjangoDB.ForeignKey(
+        Post,
+        on_delete=DjangoDB.PROTECT,
+        related_name="local_posts",
+    )
+    collection = DjangoDB.ManyToManyField(Sound, blank=True)
+
+    class Meta:
+        ordering = ["-post__publication_date", "-post__created_at"]
+
+    def __str__(self):
+        return str(self.post)
+
+    def get_absolute_url(self):
+        try:
+            player = self.player
+        except Player.DoesNotExist:
+            return reverse("vote:vote", urlconf="config.urls")
+        return reverse(
+            "vote:vote", urlconf="config.urls", query={"player": player.token}
+        )
+
+
+class Comment(DjangoDB.Model):
+    """A listener's single, permanent response to a post."""
+
+    post = DjangoDB.ForeignKey(
+        Post,
+        on_delete=DjangoDB.CASCADE,
+        related_name="comments",
+    )
+    user = DjangoDB.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=DjangoDB.CASCADE,
+        related_name="comments",
+    )
+    body = DjangoDB.TextField(max_length=2000)
+    created_at = DjangoDB.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-pk"]
+        constraints = [
+            DjangoDB.UniqueConstraint(
+                fields=["post", "user"],
+                name="unique_comment_per_user_post",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.user} on {self.post}"

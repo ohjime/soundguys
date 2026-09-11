@@ -1,0 +1,11 @@
+<c-vars post="" />
+        <p style="font-family: {{ post.font_css_stack }}" class="explore-font text-[18px] italic text-base-content/60 text-center">{{ post.announcers_call }}
+        </p>
+        <h2
+            class="font-sans text-[30px] sm:text-[44px] font-semibold leading-[110%] tracking-[-0.02em] text-center pb-4">
+            {{ post.title }}</h2>
+        <div class="max-w-160 mx-auto -mt-5">
+            <p class="mt-3 font-sans text-[14px] text-base-content/60 text-center">
+                {{ post.publication_date|date:"M j, Y" }}
+            </p>
+        </div>

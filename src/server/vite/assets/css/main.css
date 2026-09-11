@@ -5,6 +5,39 @@
     font-family: var(--explore-font-family, var(--font-sans));
 }
 
+/*
+ * A link in an Explore post that names one layer of the post's mix
+ * (explore/layer_link.html). Written as plain CSS because Tailwind only scans
+ * source files, and this markup is rendered from a writer's markdown at
+ * request time — the same reason the prose styling around it lives on the
+ * article wrapper in cotton/explore_article.html.
+ *
+ * It reads as a link, and then as a control: the underline is the article's,
+ * the dot before it says the words go to the card rather than off the page.
+ */
+.explore-layer-link {
+    cursor: pointer;
+    font-weight: 600;
+    text-decoration-color: color-mix(in oklab, var(--color-amber-600) 60%, transparent);
+    text-underline-offset: 2px;
+}
+
+.explore-layer-link::before {
+    content: "";
+    display: inline-block;
+    width: 0.4em;
+    height: 0.4em;
+    margin-right: 0.28em;
+    border-radius: 50%;
+    background: var(--color-amber-600);
+    vertical-align: 0.08em;
+}
+
+.explore-layer-link:hover,
+.explore-layer-link:focus-visible {
+    text-decoration-color: var(--color-amber-600);
+}
+
 @source "../../../src";
 @source "..";
 

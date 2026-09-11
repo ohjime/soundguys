@@ -41,7 +41,7 @@ class Command(BaseCommand):
                 self.stdout.write(
                     self.style.SUCCESS(f"\033[1mRefreshing All Players\033[22m")
                 )
-                players = Player.objects.all()
+                players = Player.objects.filter(sleeping=False)
                 if players:
                     for player in players:
                         try:

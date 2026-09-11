@@ -1,5 +1,4 @@
 <c-vars post="" />
-{% url 'app:artist_details' as artist_url %}
 <!--
 The mix a post is written about, playable at the head of the post.
 
@@ -40,7 +39,7 @@ layers were deleted underneath it rather than throw on render.
             </c-core-sound-indicator-dock>
             <c-core-sound-card-figure>
                 <template x-if="!$store.soundLayers.isEmpty">
-                    <c-core-sound-carousel artist_url="{{ artist_url }}" />
+                    <c-core-sound-carousel />
                 </template>
             </c-core-sound-card-figure>
         </div>
@@ -70,6 +69,6 @@ layers were deleted underneath it rather than throw on render.
              runs escapejs over *that*, so a title with an apostrophe in it
              reaches the save dialog as `&#x27;`. Passing the value itself
              leaves escapejs as the only escaping it goes through. -->
-        <c-core-sound-master :save_title="post.title" />
+        <c-core-sound-master :save_title="post.post.title" />
     </div>
 </c-core-card>

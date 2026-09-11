@@ -386,6 +386,16 @@ UNFOLD = {
                         "link": reverse_lazy("admin:core_player_changelist"),
                     },
                     {
+                        "title": _("Posts"),
+                        "icon": "article",
+                        "link": reverse_lazy("admin:core_post_changelist"),
+                    },
+                    {
+                        "title": _("Local posts"),
+                        "icon": "description",
+                        "link": reverse_lazy("admin:core_localpost_changelist"),
+                    },
+                    {
                         "title": _("Sounds"),
                         "icon": "library_music",
                         "link": reverse_lazy("admin:core_sound_changelist"),

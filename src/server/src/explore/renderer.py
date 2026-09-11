@@ -1,97 +1,21 @@
-"""Markdown → safe HTML rendering for explore posts.
+"""Explore publication queries and fixed-mix article rendering."""
 
-Pipeline (order matters):
-  1. Extract shortcode lines ([[name attr="…"]]) and render their cotton
-     component templates, leaving nonce'd placeholders in the text.
-  2. Render markdown to HTML.
-  3. Sanitize with an explicit nh3 allowlist — author markdown can never emit
-     scripts, event handlers, or iframes.
-  4. Re-inject the rendered component HTML over the placeholders. Component
-     templates are ours (trusted), and their attr values pass through Django
-     template autoescaping, so this HTML may safely contain iframes etc.
-"""
-
-import re
-import secrets
-from dataclasses import dataclass
-
-import markdown as md
-import nh3
 from django.db.models import Count
-from django.template.loader import render_to_string
-from django.utils.safestring import SafeString, mark_safe
+from django.utils.safestring import SafeString
 
-SHORTCODE_LINE_RE = re.compile(r'^\[\[(\w+)((?:\s+\w+="[^"]*")*)\s*\]\]$')
-ATTR_RE = re.compile(r'(\w+)="([^"]*)"')
-
-ALLOWED_TAGS = {
-    "p", "h1", "h2", "h3", "h4", "blockquote", "pre", "code", "em", "strong",
-    "del", "ul", "ol", "li", "a", "hr", "br", "table", "thead",
-    "tbody", "tr", "th", "td",
-}
-ALLOWED_ATTRIBUTES = {"a": {"href", "title"}}
-ALLOWED_URL_SCHEMES = {"http", "https", "mailto"}
+from core.renderer import render_markdown
 
 
-@dataclass(frozen=True)
-class Shortcode:
-    template: str
-    allowed_attrs: frozenset[str]
+def render_post(post, layers=None) -> SafeString:
+    """The post's writing, with its layer links wired to the card above it.
 
-
-# Adding a component = one cotton-using template file + one entry here.
-SHORTCODES = {
-    "youtube": Shortcode(
-        template="explore/shortcodes/youtube.html",
-        allowed_attrs=frozenset({"id", "caption"}),
-    ),
-}
-
-
-def _extract_shortcodes(body):
-    """Replace known shortcode lines with placeholders; return (text, {placeholder: html})."""
-    nonce = secrets.token_hex(4)
-    rendered = {}
-    lines = []
-    for line in body.splitlines():
-        match = SHORTCODE_LINE_RE.match(line.strip())
-        shortcode = SHORTCODES.get(match.group(1)) if match else None
-        if not shortcode:
-            lines.append(line)
-            continue
-        attrs = {
-            key: value
-            for key, value in ATTR_RE.findall(match.group(2))
-            if key in shortcode.allowed_attrs
-        }
-        token = f"@@sc-{nonce}-{len(rendered)}@@"
-        rendered[token] = render_to_string(shortcode.template, attrs)
-        # Blank lines guarantee the placeholder becomes its own paragraph.
-        lines.extend(["", token, ""])
-    return "\n".join(lines), rendered
-
-
-def render_markdown(body: str) -> SafeString:
-    text, shortcodes = _extract_shortcodes(body)
-    html = md.markdown(text, extensions=["fenced_code", "tables"])
-    html = nh3.clean(
-        html,
-        tags=ALLOWED_TAGS,
-        attributes=ALLOWED_ATTRIBUTES,
-        url_schemes=ALLOWED_URL_SCHEMES,
-        link_rel="noopener noreferrer",
-    )
-    for token, component_html in shortcodes.items():
-        paragraph_re = re.compile(rf"<p>\s*{re.escape(token)}\s*</p>")
-        if paragraph_re.search(html):
-            html = paragraph_re.sub(lambda m: component_html, html, count=1)
-        else:
-            html = html.replace(token, component_html, 1)
-    return mark_safe(html)
-
-
-def render_post(post) -> SafeString:
-    return render_markdown(post.article)
+    Callers that already hold the reader's layers pass them in: the link
+    carries a position in that list, so building a second one here would leave
+    the two free to disagree about what layer 3 is.
+    """
+    if layers is None:
+        layers = post.cosound_sounds()
+    return render_markdown(post.post.article, layers, post.card_anchor_id)
 
 
 def get_previous_posts_context(current_post):
@@ -102,7 +26,7 @@ def get_previous_posts_context(current_post):
     posts = list(
         get_published_posts()
         .exclude(pk=current_post.pk)
-        .annotate(comment_count=Count("comments"))[:6]
+        .annotate(comment_count=Count("post__comments"))[:6]
     )
     return {
         "previous_posts": posts[:5],
@@ -111,23 +35,16 @@ def get_previous_posts_context(current_post):
 
 
 def get_published_posts():
-    """Published posts, newest first.
-
-    `cosound__isnull=False` is a second lock on the same rule the model holds:
-    a post is only publishable with a mix behind it. The model cannot see a
-    cosound row being deleted (SET_NULL is a bulk UPDATE), so a post can lose
-    its card between saves — this is what keeps such a post off the site even
-    in the window before the pre_delete receiver has unpublished it.
-    """
-    from explore.models import Post
+    """Published writing with an available fixed mix, newest first."""
+    from explore.models import PublicPost
 
     return (
-        Post.objects.filter(
-            publication_date__isnull=False,
+        PublicPost.objects.filter(
+            post__publication_date__isnull=False,
             cosound__isnull=False,
         )
-        .select_related("cosound")
-        .order_by("-publication_date", "-created_at", "-pk")
+        .select_related("post", "cosound")
+        .order_by("-post__publication_date", "-post__created_at", "-pk")
     )
 
 
@@ -143,10 +60,13 @@ def get_explore_context(user=None):
     lead_post = posts.first()
     if lead_post:
         posts = posts.exclude(pk=lead_post.pk)
+    # Built once and handed to both the card and the writing: a layer link in
+    # the writing is a position in this list.
+    sounds = lead_post.cosound_sounds(user) if lead_post else []
     context = {
         "explore_post": lead_post,
-        "explore_body_html": render_post(lead_post) if lead_post else "",
-        "explore_sounds": lead_post.cosound_sounds(user) if lead_post else [],
+        "explore_body_html": render_post(lead_post, sounds) if lead_post else "",
+        "explore_sounds": sounds,
         "explore_posts": posts,
         **get_previous_posts_context(lead_post),
     }
