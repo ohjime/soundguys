@@ -617,7 +617,8 @@ class CosoundPlayerApp(App):
         # Async Textual workers share the UI event loop and are cancelled when
         # the app exits. HTTP, downloads, and audio remain in the refresh thread.
         await watch_player_changes(
-            self.api_key, self.refresh_cosound, self._show_live_status
+            self.api_key, self.refresh_cosound, self._show_live_status,
+            on_vote=self.player.play_vote_chime,
         )
 
     def _show_live_status(self, status: str) -> None:

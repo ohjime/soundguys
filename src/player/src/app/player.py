@@ -9,6 +9,7 @@ from app.layout import infer_layout, default_source_azimuths
 from app.spatial import make_renderer
 from app.reverb import FDNReverb
 from app.conditioning import _resample as resample_audio
+from app.chime import vote_chime
 
 
 class CommunalPlayer(ABC):
@@ -72,6 +73,8 @@ class SoundDevicePlayer(CommunalPlayer):
         self.muted = False
         self.levels = {}
         self.last_status = None
+        self._vote_chime = vote_chime(self.fs)
+        self._vote_chime_positions = []
 
         # Source positions for layered tracks (AAS used an even 45° spread).
         self._positions = default_source_azimuths(8)
@@ -93,6 +96,12 @@ class SoundDevicePlayer(CommunalPlayer):
     def set_master_gain(self, gain):
         with self.lock:
             self.master_gain = max(0.0, min(1.0, float(gain)))
+
+    def play_vote_chime(self):
+        """Start a one-shot on the existing output, independently of mix changes."""
+        with self.lock:
+            # Bound burst cost while allowing new taps to sound immediately.
+            self._vote_chime_positions = self._vote_chime_positions[-7:] + [0]
 
     def set_muted(self, muted):
         with self.lock:
@@ -179,6 +188,14 @@ class SoundDevicePlayer(CommunalPlayer):
         levels = {}
 
         with self.lock:
+            chime = np.zeros(frames, dtype=np.float32)
+            remaining = []
+            for position in self._vote_chime_positions:
+                count = min(frames, len(self._vote_chime) - position)
+                chime[:count] += self._vote_chime[position:position + count]
+                if position + count < len(self._vote_chime):
+                    remaining.append(position + count)
+            self._vote_chime_positions = remaining
             for path in list(self.active_tracks.keys()):
                 track = self.active_tracks[path]
                 data = track["data"]
@@ -227,6 +244,7 @@ class SoundDevicePlayer(CommunalPlayer):
         dry, send = self.renderer.render(sources, frames)
         wet = self.reverb.process(send)
         mix = dry + wet
+        mix += chime[:, np.newaxis] / np.sqrt(self.channels)
         mix *= output_gain
         np.clip(mix, -1.0, 1.0, out=mix)
         outdata[:] = mix

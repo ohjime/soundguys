@@ -136,6 +136,29 @@ a new prediction immediately just because notifications are enabled.
 
 ## Model changes and explicit notifications
 
+### Vote confirmation sound
+
+New votes send a separate event after the database transaction commits:
+
+```json
+{"type": "player.vote_received", "schema_version": 1, "vote_id": 123}
+```
+
+The connected player plays an original, locally synthesized 450 ms bell over
+the current soundscape. It uses the existing audio output and follows master
+volume and mute. It does not change the mix or wait for the prediction cycle.
+Listener details are never sent. Rejected votes, rolled-back transactions,
+edits to existing votes, and wake-up requests that do not create a vote do not
+play the bell. The player remembers the last 512 vote IDs across reconnects
+within its current run to suppress duplicate events. At most eight bell voices
+overlap during a burst; the newest tap replaces the oldest voice at that limit.
+
+These are live, best-effort confirmations, not a persistent notification queue.
+Votes saved while the player is offline or Redis is unavailable remain saved,
+but their sounds are not replayed on reconnection.
+
+### State changes
+
 Signal hooks cover saved/deleted players, sound collection membership,
 relevant sound metadata and deletions, manager names, and artist credits.
 Notifications run after the surrounding database transaction commits, so a

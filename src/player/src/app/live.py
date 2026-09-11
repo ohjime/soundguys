@@ -4,6 +4,7 @@ import asyncio
 import json
 import os
 import random
+from collections import deque
 from collections.abc import Callable
 from time import monotonic
 from urllib.parse import urlsplit, urlunsplit
@@ -57,7 +58,10 @@ def _event_type(message: str | bytes) -> str | None:
     return event.get("type")
 
 
-async def _receive_changes(websocket, refresh: Callable[[], None], status) -> None:
+async def _receive_changes(websocket, refresh: Callable[[], None], status,
+                           on_vote=None, seen_votes=None) -> None:
+    if seen_votes is None:
+        seen_votes = deque(maxlen=512)
     # A successful handshake isn't sufficient: the server must have joined the
     # player's group before we fetch the snapshot, or an update can be missed.
     async with asyncio.timeout(READY_TIMEOUT):
@@ -68,6 +72,12 @@ async def _receive_changes(websocket, refresh: Callable[[], None], status) -> No
     async for message in websocket:
         if _event_type(message) in ("player.changed", "player.ready"):
             refresh()
+        elif _event_type(message) == "player.vote_received" and on_vote is not None:
+            event = json.loads(message)
+            vote_id = event.get("vote_id")
+            if type(vote_id) is int and vote_id > 0 and vote_id not in seen_votes:
+                seen_votes.append(vote_id)
+                on_vote()
 
 
 async def watch_player_changes(
@@ -76,6 +86,7 @@ async def watch_player_changes(
     status: Callable[[str], None],
     *,
     url: str | None = None,
+    on_vote: Callable[[], None] | None = None,
 ) -> None:
     """Listen until cancelled, reconnecting with bounded, jittered backoff.
 
@@ -92,6 +103,7 @@ async def watch_player_changes(
 
     status("Connecting…")
     retry_delay = 1.0
+    seen_votes = deque(maxlen=512)
     while True:
         started_at = monotonic()
         denied = False
@@ -106,7 +118,7 @@ async def watch_player_changes(
                 max_size=4096,
                 max_queue=16,
             ) as websocket:
-                await _receive_changes(websocket, refresh, status)
+                await _receive_changes(websocket, refresh, status, on_vote, seen_votes)
         except asyncio.CancelledError:
             raise
         except InvalidStatus as error:

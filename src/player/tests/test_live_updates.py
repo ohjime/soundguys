@@ -273,9 +273,10 @@ class PlayerUIUpdateTests(unittest.IsolatedAsyncioTestCase):
         listening = asyncio.Event()
         cancelled = asyncio.Event()
 
-        async def listen(api_key, refresh, status):
+        async def listen(api_key, refresh, status, *, on_vote):
             self.assertEqual(api_key, "key")
             status("Connected")
+            on_vote()
             refresh()
             refresh()
             listening.set()
@@ -294,6 +295,7 @@ class PlayerUIUpdateTests(unittest.IsolatedAsyncioTestCase):
                 start_refresh.assert_called_once_with()
                 self.assertIn("CONNECTED", str(app.query_one("#live-status", Static).content))
         self.assertTrue(cancelled.is_set())
+        player.play_vote_chime.assert_called_once_with()
 
 
 if __name__ == "__main__":
